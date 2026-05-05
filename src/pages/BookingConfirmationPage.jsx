@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { Panel } from "../components/Panel";
 import { SectionHeading } from "../components/SectionHeading";
 import { StatusBadge } from "../components/StatusBadge";
@@ -52,6 +52,13 @@ export function BookingConfirmationPage() {
             <p>Your reservation is stored in the stay history screen.</p>
             <p>Use the Check-In page when your arrival date begins.</p>
             <p>Property staff can also see this reservation in Reservations.</p>
+
+            <Link
+              to="/app/my-stays"
+              className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            >
+              View my stays
+            </Link>
           </div>
         </Panel>
       </div>
