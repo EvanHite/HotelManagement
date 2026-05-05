@@ -327,6 +327,7 @@ export function HotelAppProvider({ children }) {
     setSearchQuery,
     setSelectedHotelId,
     createBooking,
+    createHousekeepingTask,
     createMaintenanceRequest,
     updateHousekeepingTask,
     updateMaintenanceRequest,
