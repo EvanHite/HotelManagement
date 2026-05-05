@@ -15,9 +15,16 @@ const statusOptions = [
 ];
 
 export function MaintenancePage() {
-  const { maintenanceRequests, searchQuery, updateMaintenanceRequest } = useHotelApp();
+  const { maintenanceRequests, searchQuery, updateMaintenanceRequest, roomViews, createMaintenanceRequest } = useHotelApp();
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedRequestId, setSelectedRequestId] = useState(maintenanceRequests[0]?.id ?? "");
+  const [newRequest, setNewRequest] = useState({
+    roomId: roomViews[0]?.id ?? "",
+    issueType: "Plumbing",
+    issue: "",
+    priority: "medium",
+  });
+
 
   const filteredRequests = useMemo(
     () =>
@@ -39,6 +46,22 @@ export function MaintenancePage() {
     filteredRequests[0] ??
     null;
 
+    function handleCreateRequest(event) {
+      event.preventDefault();
+
+      const createdRequest = createMaintenanceRequest(newRequest);
+
+      if (createdRequest) {
+        setSelectedRequestId(createdRequest.id);
+        setNewRequest({
+          roomId: roomViews[0]?.id ?? "",
+          issueType: "Plumbing",
+          issue: "",
+          priority: "medium",
+        });
+      }
+    }
+
   return (
     <>
       <SectionHeading
@@ -47,6 +70,73 @@ export function MaintenancePage() {
       />
 
       <FilterTabs options={statusOptions} value={statusFilter} onChange={setStatusFilter} />
+
+      <Panel title="New maintenance request">
+        <form className="grid gap-4 md:grid-cols-4" onSubmit={handleCreateRequest}>
+          <label>
+            <select
+              className="input-base"
+              value={newRequest.roomId}
+              onChange={(event) => setNewRequest((current) => ({ ...current, roomId: event.target.value }))
+              }
+              >
+                {roomViews.map((room) => (
+                  <option key={room.id} value={room.id}>
+                    Room {room.number}
+                  </option>
+                ))}
+              </select>
+          </label>
+
+          <label>
+            <span className="field-label">Issue type</span>
+            <select
+              className="input-base"
+              value={newRequest.issueType}
+              onChange={(event) => setNewRequest((current) => ({ ...current, issueType: event.target.value }))
+            }
+            >
+              <option value="Plumbing">Plumbing</option>
+              <option value="HVAC">HVAC</option>
+              <option value="Electrical">Electrical</option>
+              <option value="Furniture">Furniture</option>
+              <option value="Electronics">Electronics</option>
+            </select>
+          </label>
+
+          <label>
+            <span className="field-label">Priority</span>
+            <select
+              className="input-base"
+              value={newRequest.priority}
+              onChange={(event) => setNewRequest((current) => ({ ...current, priority: event.target.value }))
+            }
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+
+          <label>
+            <span className="field-label">Issue</span>
+            <input
+              className="input-base"
+              value={newRequest.issue}
+              onChange={(event) => setNewRequest((current) => ({ ...current, issue: event.target.value }))
+          }
+          placeholder="Describe the problem"
+          required
+            />
+          </label>
+
+          <div className="md:col-span-4">
+            <button className="btn-primary" type="submit">
+              Create request
+            </button>
+          </div>
+        </form>
+      </Panel>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_360px]">
         <Panel title="Issue queue" description="Select an issue to update its status or review location details.">

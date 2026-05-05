@@ -226,6 +226,32 @@ export function HotelAppProvider({ children }) {
     );
   }
 
+  function createMaintenanceRequest({ roomId, issueType, issue, priority}) {
+    const room = baseRooms.find((entry) => entry.id === roomId);
+
+    if (!room) {
+      return null;
+    }
+
+    const request = {
+      id: `mx-${Date.now()}`,
+      roomId,
+      roomNumber: room.number,
+      location: "Guest room",
+      issueType,
+      issue,
+      priority,
+      status: "open",
+      assignedTo: "Unassigned",
+      reportedAt: "Just now",
+      submittedDate: businessDate,
+    };
+
+    setMaintenanceRequests((current) => [request, ...current]);
+
+    return request;
+  }
+
   function updateMaintenanceRequest(requestId, status) {
     setMaintenanceRequests((current) =>
       current.map((request) =>
@@ -275,6 +301,7 @@ export function HotelAppProvider({ children }) {
     setSearchQuery,
     setSelectedHotelId,
     createBooking,
+    createMaintenanceRequest,
     updateHousekeepingTask,
     updateMaintenanceRequest,
     updateReservation,
