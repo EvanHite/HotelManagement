@@ -5,14 +5,14 @@ import { getDefaultRoute } from "../config/navigation";
 import { useHotelApp } from "../context/HotelAppContext";
 
 export function ManagementSignInPage() {
-  const { businessDateLabel, hotels, loginAs, metrics } = useHotelApp();
+  const { hotels, loginManagement } = useHotelApp();
   const navigate = useNavigate();
   const [hotelId, setHotelId] = useState(hotels[0]?.id ?? "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     if (!email.trim() || !password.trim()) {
@@ -20,7 +20,13 @@ export function ManagementSignInPage() {
       return;
     }
 
-    loginAs("management");
+    const user = await loginManagement(email, password);
+
+    if (!user) {
+      setError("Email or password did not match.");
+      return;
+    }
+
     navigate(getDefaultRoute("management"));
   }
 
@@ -28,12 +34,7 @@ export function ManagementSignInPage() {
     <AuthShell
       activePortal="management"
       title="Management Sign In"
-      subtitle={businessDateLabel}
-      metrics={[
-        { label: "Occupancy", value: `${metrics.occupancyRate}%` },
-        { label: "Arrivals", value: metrics.arrivalsToday },
-        { label: "Low stock", value: metrics.inventoryAlerts },
-      ]}
+      subtitle="Authorized manager access"
       actions={
         <Link className="btn-secondary" to="/">
           Back
@@ -61,6 +62,7 @@ export function ManagementSignInPage() {
           <input
             className="input-base"
             type="email"
+            required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="manager@hotel.example"
@@ -72,6 +74,7 @@ export function ManagementSignInPage() {
           <input
             className="input-base"
             type="password"
+            required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Enter password"

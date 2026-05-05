@@ -4,14 +4,42 @@ CREATE TABLE IF NOT EXISTS hotels (
   location VARCHAR(160) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS app_settings (
+  setting_key VARCHAR(80) PRIMARY KEY,
+  setting_value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS amenities (
+  id VARCHAR(80) PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  detail TEXT NOT NULL,
+  amenity_group VARCHAR(40) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS guest_profiles (
   id VARCHAR(80) PRIMARY KEY,
   name VARCHAR(120) NOT NULL,
-  email VARCHAR(160) NOT NULL,
+  email VARCHAR(160) NOT NULL UNIQUE,
   phone VARCHAR(40) NOT NULL,
   loyalty_tier VARCHAR(40) NOT NULL,
   company VARCHAR(120) NOT NULL,
-  notes TEXT
+  notes TEXT,
+  password VARCHAR(120) NOT NULL DEFAULT 'guest123'
+);
+
+CREATE TABLE IF NOT EXISTS staff_users (
+  id VARCHAR(80) PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  role VARCHAR(40) NOT NULL,
+  employee_id VARCHAR(80) NULL,
+  email VARCHAR(160) NULL,
+  password VARCHAR(120) NOT NULL,
+  INDEX idx_staff_role (role),
+  INDEX idx_staff_employee (employee_id),
+  INDEX idx_staff_email (email),
+  UNIQUE KEY unique_staff_employee (employee_id),
+  UNIQUE KEY unique_staff_email (email)
 );
 
 CREATE TABLE IF NOT EXISTS rooms (
@@ -36,6 +64,11 @@ CREATE TABLE IF NOT EXISTS reservations (
   check_out DATE NOT NULL,
   status VARCHAR(40) NOT NULL,
   payment_status VARCHAR(40) NOT NULL,
+  payment_method JSON NULL,
+  amount_paid INT NOT NULL DEFAULT 0,
+  balance_due INT NOT NULL DEFAULT 0,
+  authorized_amount INT NOT NULL DEFAULT 0,
+  payment_history JSON NULL,
   adults INT NOT NULL,
   total INT NOT NULL,
   source VARCHAR(80) NOT NULL,
@@ -86,4 +119,13 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   unit VARCHAR(40) NOT NULL,
   vendor VARCHAR(120) NOT NULL,
   INDEX idx_inventory_category (category)
+);
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+  login_key VARCHAR(180) NOT NULL,
+  ip_address VARCHAR(80) NOT NULL,
+  attempts INT NOT NULL DEFAULT 0,
+  locked_until DATETIME NULL,
+  last_attempt DATETIME NOT NULL,
+  PRIMARY KEY (login_key, ip_address)
 );

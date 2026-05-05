@@ -4,7 +4,7 @@ import { TopBar } from "./TopBar";
 import { useHotelApp } from "../context/HotelAppContext";
 
 export function AppShell({ children }) {
-  const { dataError } = useHotelApp();
+  const { dataError, isLoadingData } = useHotelApp();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
@@ -18,6 +18,11 @@ export function AppShell({ children }) {
           {dataError ? (
             <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 sm:px-6 lg:px-8">
               {dataError}
+            </div>
+          ) : null}
+          {isLoadingData ? (
+            <div className="border-b border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 sm:px-6 lg:px-8">
+              Loading database data.
             </div>
           ) : null}
           <main className="py-4 lg:py-6">

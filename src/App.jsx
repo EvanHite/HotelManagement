@@ -20,7 +20,7 @@ function ProtectedShell() {
   const { session } = useHotelApp();
 
   if (!session) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/guest/sign-in" replace />;
   }
 
   return (
@@ -40,7 +40,7 @@ function RoleRoute({ allowedRoles, element }) {
   const { session } = useHotelApp();
 
   if (!session) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/guest/sign-in" replace />;
   }
 
   if (!allowedRoles.includes(session.role)) {
@@ -53,7 +53,7 @@ function RoleRoute({ allowedRoles, element }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<GuestSignInPage />} />
+      <Route path="/" element={<BookStayPage isPublic />} />
       <Route path="/staff/sign-in" element={<StaffSignInPage />} />
       <Route path="/management/sign-in" element={<ManagementSignInPage />} />
       <Route path="/guest/sign-in" element={<GuestSignInPage />} />

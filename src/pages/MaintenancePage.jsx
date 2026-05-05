@@ -17,9 +17,11 @@ const statusOptions = [
 export function MaintenanceSection({ showHeading = true } = {}) {
   const {
     createMaintenanceRequest,
+    deleteMaintenanceRequest,
     maintenanceRequests,
     roomViews,
     searchQuery,
+    session,
     updateMaintenanceRequest,
   } = useHotelApp();
   const [statusFilter, setStatusFilter] = useState("all");
@@ -52,10 +54,10 @@ export function MaintenanceSection({ showHeading = true } = {}) {
     filteredRequests[0] ??
     null;
 
-  function handleCreateRequest(event) {
+  async function handleCreateRequest(event) {
     event.preventDefault();
 
-    const createdRequest = createMaintenanceRequest(newRequest);
+    const createdRequest = await createMaintenanceRequest(newRequest);
 
     if (!createdRequest) {
       return;
@@ -69,6 +71,15 @@ export function MaintenanceSection({ showHeading = true } = {}) {
       priority: "medium",
       assignedTo: "Theo Grant",
     });
+  }
+
+  function handleDeleteRequest() {
+    if (!selectedRequest || !window.confirm("Delete this maintenance request?")) {
+      return;
+    }
+
+    deleteMaintenanceRequest(selectedRequest.id);
+    setSelectedRequestId("");
   }
 
   return (
@@ -218,6 +229,13 @@ export function MaintenanceSection({ showHeading = true } = {}) {
                   Resolve
                 </button>
               </div>
+              {["maintenance", "management"].includes(session.role) && (
+                <div className="border-t border-slate-200 pt-4">
+                  <button className="btn-danger" type="button" onClick={handleDeleteRequest}>
+                    Delete request
+                  </button>
+                </div>
+              )}
             </div>
           </Panel>
         )}

@@ -1,22 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import {
-  baseRooms as mockBaseRooms,
-  buildRoomViews,
-  businessDate as mockBusinessDate,
-  demoUsers,
-  guestProfiles as mockGuestProfiles,
-  hotels as mockHotels,
-  initialHousekeepingTasks as mockHousekeepingTasks,
-  initialInventoryItems as mockInventoryItems,
-  initialMaintenanceRequests as mockMaintenanceRequests,
-  initialReservations as mockReservations,
-  roleLabels,
-} from "../data/mockData";
+import { apiGet, apiPost } from "../api/hotelApi";
+import { buildRoomViews, roleLabels } from "../config/hotelConfig";
 import { formatLongDate, nightsBetween } from "../utils/formatters";
 
 const SESSION_KEY = "hotel-management-session";
-const HOTEL_DATA_KEY = "hotel-management-data";
-const SETTINGS_KEY = "hotel-management-settings";
 const HotelAppContext = createContext(null);
 
 const defaultSettings = {
@@ -102,41 +89,17 @@ function normalizeReservationPayment(reservation) {
 }
 
 const defaultHotelData = {
-  businessDate: mockBusinessDate,
-  hotels: mockHotels,
-  guestProfiles: mockGuestProfiles,
-  baseRooms: mockBaseRooms,
-  reservations: mockReservations.map(normalizeReservationPayment),
-  housekeepingTasks: mockHousekeepingTasks,
-  maintenanceRequests: mockMaintenanceRequests,
-  inventoryItems: mockInventoryItems,
+  businessDate: new Date().toISOString().slice(0, 10),
+  hotels: [],
+  amenities: [],
+  guestProfiles: [],
+  baseRooms: [],
+  reservations: [],
+  housekeepingTasks: [],
+  maintenanceRequests: [],
+  inventoryItems: [],
   latestReservationId: null,
 };
-
-function cloneDefaultHotelData() {
-  return JSON.parse(JSON.stringify(defaultHotelData));
-}
-
-function getInitialSettings() {
-  if (typeof window === "undefined") {
-    return defaultSettings;
-  }
-
-  const stored = window.localStorage.getItem(SETTINGS_KEY);
-
-  if (!stored) {
-    return defaultSettings;
-  }
-
-  try {
-    return {
-      ...defaultSettings,
-      ...JSON.parse(stored),
-    };
-  } catch (error) {
-    return defaultSettings;
-  }
-}
 
 function datesOverlap(firstStart, firstEnd, secondStart, secondEnd) {
   return firstStart < secondEnd && firstEnd > secondStart;
@@ -144,6 +107,14 @@ function datesOverlap(firstStart, firstEnd, secondStart, secondEnd) {
 
 function isValidDateRange(checkIn, checkOut) {
   return Boolean(checkIn && checkOut && checkOut > checkIn);
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidPassword(password) {
+  return password.length >= 6 && !/^[A-Za-z]+$/.test(password) && !/^\d+$/.test(password);
 }
 
 function getInitialSession() {
@@ -155,44 +126,19 @@ function getInitialSession() {
   return stored ? JSON.parse(stored) : null;
 }
 
-function getInitialHotelData() {
-  if (typeof window === "undefined") {
-    return defaultHotelData;
-  }
-
-  const stored = window.localStorage.getItem(HOTEL_DATA_KEY);
-
-  if (!stored) {
-    return defaultHotelData;
-  }
-
-  try {
-    const parsed = JSON.parse(stored);
-
-    return {
-      ...defaultHotelData,
-      ...parsed,
-      reservations: (parsed.reservations ?? defaultHotelData.reservations).map(
-        normalizeReservationPayment,
-      ),
-    };
-  } catch (error) {
-    return defaultHotelData;
-  }
-}
-
 export function HotelAppProvider({ children }) {
   // Session and shared app data.
   const [session, setSession] = useState(getInitialSession);
-  const [hotelData, setHotelData] = useState(getInitialHotelData);
-  const [settings, setSettings] = useState(getInitialSettings);
+  const [hotelData, setHotelData] = useState(defaultHotelData);
+  const [settings, setSettings] = useState(defaultSettings);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoadingData] = useState(false);
-  const dataError = "";
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [dataError, setDataError] = useState("");
 
   const {
     businessDate,
     hotels,
+    amenities,
     guestProfiles,
     baseRooms,
     reservations,
@@ -202,7 +148,57 @@ export function HotelAppProvider({ children }) {
     latestReservationId,
   } = hotelData;
 
-  // Save the current demo login between page refreshes.
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDatabaseData() {
+      setIsLoadingData(true);
+
+      try {
+        const data = await apiGet("data.php");
+
+        if (!isMounted) {
+          return;
+        }
+
+        setHotelData({
+          businessDate: data.businessDate,
+          hotels: data.hotels ?? [],
+          amenities: data.amenities ?? [],
+          guestProfiles: data.guestProfiles ?? [],
+          baseRooms: data.baseRooms ?? [],
+          reservations: (data.initialReservations ?? []).map(normalizeReservationPayment),
+          housekeepingTasks: data.initialHousekeepingTasks ?? [],
+          maintenanceRequests: data.initialMaintenanceRequests ?? [],
+          inventoryItems: data.initialInventoryItems ?? [],
+          latestReservationId: null,
+        });
+        setSettings({
+          ...defaultSettings,
+          ...(data.settings ?? {}),
+        });
+        setDataError("");
+      } catch (error) {
+        if (isMounted) {
+          setDataError(
+            "Database API is unavailable. Check the Hostinger upload, MySQL tables, and API configuration.",
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingData(false);
+        }
+      }
+    }
+
+    loadDatabaseData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Save the current login between page refreshes.
   useEffect(() => {
     if (session) {
       window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -212,19 +208,6 @@ export function HotelAppProvider({ children }) {
     window.localStorage.removeItem(SESSION_KEY);
   }, [session]);
 
-  // Save hotel data locally until the MySQL version is connected.
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(HOTEL_DATA_KEY, JSON.stringify(hotelData));
-    }
-  }, [hotelData]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    }
-  }, [settings]);
-
   function updateHotelData(changes) {
     setHotelData((current) => ({
       ...current,
@@ -232,16 +215,27 @@ export function HotelAppProvider({ children }) {
     }));
   }
 
+  function syncToDatabase(fileName, payload) {
+    return apiPost(fileName, payload).catch((error) => {
+      setDataError(error.message);
+      return null;
+    });
+  }
+
   function updateSettings(changes) {
+    const nextSettings = {
+      ...settings,
+      ...changes,
+    };
+
     setSettings((current) => ({
       ...current,
       ...changes,
     }));
-  }
-
-  function resetDemoData() {
-    setHotelData(cloneDefaultHotelData());
-    setSettings(defaultSettings);
+    syncToDatabase("operations.php", {
+      action: "updateSettings",
+      settings: nextSettings,
+    });
   }
 
   // Derived data used by multiple pages.
@@ -298,13 +292,74 @@ export function HotelAppProvider({ children }) {
   const latestReservation =
     reservations.find((reservation) => reservation.id === latestReservationId) ?? null;
 
-  function loginAs(role, overrides = {}) {
-    const demoUser = demoUsers.find((user) => user.role === role);
-    setSession({
-      role,
-      name: overrides.name ?? demoUser?.name ?? roleLabels[role],
-      guestId: overrides.guestId ?? demoUser?.guestId ?? null,
-    });
+  async function loginStaff(role, employeeId, password) {
+    const cleanEmployeeId = employeeId.trim().toUpperCase();
+
+    try {
+      const data = await apiPost("auth.php", {
+        action: "staffLogin",
+        role,
+        employeeId: cleanEmployeeId,
+        password,
+      });
+      const user = data.user;
+
+      setSession({
+        role: user.role,
+        name: user.name,
+        guestId: null,
+        token: data.token,
+      });
+      return user;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function loginManagement(email, password) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    try {
+      const data = await apiPost("auth.php", {
+        action: "managementLogin",
+        email: cleanEmail,
+        password,
+      });
+      const user = data.user;
+
+      setSession({
+        role: "management",
+        name: user.name,
+        guestId: null,
+        token: data.token,
+      });
+      return user;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function loginGuest(email, password) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    try {
+      const data = await apiPost("guests.php", {
+        action: "login",
+        email: cleanEmail,
+        password,
+      });
+      const guest = data.guest;
+
+      setSession({
+        role: "guest",
+        name: guest.name,
+        guestId: guest.id,
+        token: data.token,
+      });
+      return guest;
+    } catch (error) {
+      return null;
+    }
   }
 
   function isRoomAvailable(roomId, checkIn, checkOut, ignoredReservationId = null) {
@@ -367,7 +422,16 @@ export function HotelAppProvider({ children }) {
   }
 
   // Reservation actions.
-  function createBooking({ guestId, roomId, checkIn, checkOut, adults, notes, paymentOption }) {
+  async function createBooking({
+    guestId,
+    roomId,
+    checkIn,
+    checkOut,
+    adults,
+    notes,
+    paymentOption,
+    paymentCard,
+  }) {
     const guest = guestProfiles.find((profile) => profile.id === guestId);
     const room = baseRooms.find((entry) => entry.id === roomId);
 
@@ -376,17 +440,18 @@ export function HotelAppProvider({ children }) {
     }
 
     const total = room.rate * nightsBetween(checkIn, checkOut);
-    const source = session?.role === "guest" ? "Guest Portal" : "Front Desk";
+    const source = session?.role === "guest" || !session ? "Guest Portal" : "Front Desk";
     const shouldPrepay = paymentOption === "prepaid";
     const shouldAuthorize = paymentOption === "card-on-file";
-    const paymentMethod = shouldPrepay || shouldAuthorize
-      ? {
-          brand: "Visa",
-          last4: "4242",
-          expiry: "12/28",
-          cardholderName: guest.name,
-        }
-      : null;
+    const paymentMethod =
+      shouldPrepay || shouldAuthorize
+        ? {
+            brand: paymentCard?.brand ?? "Visa",
+            last4: paymentCard?.last4 ?? "4242",
+            expiry: paymentCard?.expiry ?? "12/28",
+            cardholderName: paymentCard?.cardholderName ?? guest.name,
+          }
+        : null;
 
     const reservation = normalizeReservationPayment({
       id: `res-${Date.now()}`,
@@ -420,6 +485,15 @@ export function HotelAppProvider({ children }) {
       notes,
     });
 
+    const saved = await syncToDatabase("reservations.php", {
+      action: "create",
+      ...reservation,
+    });
+
+    if (!saved) {
+      return null;
+    }
+
     updateHotelData({
       reservations: [reservation, ...reservations],
       latestReservationId: reservation.id,
@@ -429,6 +503,7 @@ export function HotelAppProvider({ children }) {
 
   function updateReservationStatus(reservationId, status) {
     const reservation = reservations.find((entry) => entry.id === reservationId);
+    let syncedReservation = null;
     const updatedReservations = reservations.map((entry) => {
         if (entry.id !== reservationId) {
           return entry;
@@ -437,7 +512,7 @@ export function HotelAppProvider({ children }) {
         const hasPaidBalance = entry.amountPaid > 0;
         const isCancellation = status === "cancelled";
 
-        return {
+        syncedReservation = {
           ...entry,
           status,
           paymentStatus:
@@ -459,6 +534,7 @@ export function HotelAppProvider({ children }) {
                 ]
               : entry.paymentHistory,
         };
+        return syncedReservation;
       });
 
     const updates = {
@@ -493,6 +569,18 @@ export function HotelAppProvider({ children }) {
     }
 
     updateHotelData(updates);
+    if (syncedReservation) {
+      syncToDatabase("reservations.php", {
+        action: "status",
+        reservationId,
+        status,
+        paymentStatus: syncedReservation.paymentStatus,
+        amountPaid: syncedReservation.amountPaid,
+        authorizedAmount: syncedReservation.authorizedAmount,
+        balanceDue: syncedReservation.balanceDue,
+        paymentHistory: syncedReservation.paymentHistory ?? [],
+      });
+    }
   }
 
   function updateReservation(reservationId, changes) {
@@ -506,6 +594,14 @@ export function HotelAppProvider({ children }) {
           : entry,
       ),
     });
+
+    if (Object.prototype.hasOwnProperty.call(changes, "notes")) {
+      syncToDatabase("reservations.php", {
+        action: "notes",
+        reservationId,
+        notes: changes.notes,
+      });
+    }
   }
 
   function updateReservationDetails(reservationId, changes) {
@@ -553,6 +649,16 @@ export function HotelAppProvider({ children }) {
       total,
       balanceDue: calculateBalance(total, reservation.amountPaid),
     });
+    syncToDatabase("reservations.php", {
+      action: "details",
+      reservationId,
+      roomId: nextRoomId,
+      checkIn: nextCheckIn,
+      checkOut: nextCheckOut,
+      adults: nextAdults,
+      amountPaid: reservation.amountPaid,
+      notes: changes.notes ?? reservation.notes ?? "",
+    });
 
     return {
       ok: true,
@@ -560,27 +666,123 @@ export function HotelAppProvider({ children }) {
     };
   }
 
-  function createGuest(profile) {
+  async function createGuest(profile) {
     const cleanName = profile.name?.trim();
+    const cleanEmail = profile.email?.trim().toLowerCase() || "";
 
-    if (!cleanName) {
+    if (!cleanName || !isValidEmail(cleanEmail)) {
       return null;
     }
 
     const guest = {
       id: `guest-${Date.now()}`,
       name: cleanName,
-      email: profile.email?.trim() || "",
+      email: cleanEmail,
       phone: profile.phone?.trim() || "",
       loyaltyTier: profile.loyaltyTier || "Standard",
       company: profile.company?.trim() || "Personal Travel",
       notes: profile.notes?.trim() || "",
     };
 
-    updateHotelData({
-      guestProfiles: [guest, ...guestProfiles],
+    const data = await syncToDatabase("guests.php", {
+      action: "create",
+      ...guest,
+      password: "guest123",
     });
-    return guest;
+
+    if (!data) {
+      return null;
+    }
+
+    const savedGuest = data.guest ?? guest;
+    updateHotelData({
+      guestProfiles: [savedGuest, ...guestProfiles],
+    });
+    return savedGuest;
+  }
+
+  async function createGuestAccount(profile) {
+    const cleanName = profile.name?.trim();
+    const cleanEmail = profile.email?.trim().toLowerCase();
+    const cleanPassword = profile.password?.trim();
+
+    if (!cleanName || !cleanEmail || !cleanPassword) {
+      return {
+        ok: false,
+        guest: null,
+        error: "Name, email, and password are required.",
+      };
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      return {
+        ok: false,
+        guest: null,
+        error: "Enter a valid email address.",
+      };
+    }
+
+    if (!isValidPassword(cleanPassword)) {
+      return {
+        ok: false,
+        guest: null,
+        error: "Password must be at least 6 characters and include both letters and numbers or symbols.",
+      };
+    }
+
+    const existingGuest = guestProfiles.find(
+      (guest) => guest.email.toLowerCase() === cleanEmail,
+    );
+
+    if (existingGuest) {
+      return {
+        ok: false,
+        guest: null,
+        error: "An account already exists for that email.",
+      };
+    }
+
+    const guest = {
+      id: `guest-${Date.now()}`,
+      name: cleanName,
+      email: cleanEmail,
+      phone: profile.phone?.trim() || "",
+      loyaltyTier: "Standard",
+      company: "Personal Travel",
+      notes: "",
+      password: cleanPassword,
+    };
+
+    try {
+      const data = await apiPost("guests.php", {
+        action: "create",
+        ...guest,
+      });
+      const savedGuest = data.guest;
+
+      updateHotelData({
+        guestProfiles: [savedGuest, ...guestProfiles],
+      });
+      setSession({
+        role: "guest",
+        name: savedGuest.name,
+        guestId: savedGuest.id,
+        token: data.token,
+      });
+
+      return {
+        ok: true,
+        guest: savedGuest,
+        error: "",
+      };
+    } catch (error) {
+      setDataError(error.message);
+      return {
+        ok: false,
+        guest: null,
+        error: error.message,
+      };
+    }
   }
 
   function updateGuest(guestId, changes) {
@@ -594,16 +796,44 @@ export function HotelAppProvider({ children }) {
           : guest,
       ),
     });
+    const currentGuestProfile = guestProfiles.find((guest) => guest.id === guestId);
+
+    if (currentGuestProfile) {
+      syncToDatabase("guests.php", {
+        action: "update",
+        guestId,
+        ...currentGuestProfile,
+        ...changes,
+      });
+    }
   }
 
   function updateReservationPayment(reservationId, updatePayment) {
+    let syncedReservation = null;
+
     updateHotelData({
-      reservations: reservations.map((reservation) =>
-        reservation.id === reservationId
-          ? normalizeReservationPayment(updatePayment(reservation))
-          : reservation,
-      ),
+      reservations: reservations.map((reservation) => {
+        if (reservation.id !== reservationId) {
+          return reservation;
+        }
+
+        syncedReservation = normalizeReservationPayment(updatePayment(reservation));
+        return syncedReservation;
+      }),
     });
+
+    if (syncedReservation) {
+      syncToDatabase("reservations.php", {
+        action: "payment",
+        reservationId,
+        paymentStatus: syncedReservation.paymentStatus,
+        paymentMethod: syncedReservation.paymentMethod,
+        amountPaid: syncedReservation.amountPaid,
+        balanceDue: syncedReservation.balanceDue,
+        authorizedAmount: syncedReservation.authorizedAmount,
+        paymentHistory: syncedReservation.paymentHistory ?? [],
+      });
+    }
   }
 
   function addReservationCard(reservationId, card) {
@@ -704,7 +934,7 @@ export function HotelAppProvider({ children }) {
   }
 
   // Housekeeping, maintenance, and inventory actions.
-  function createHousekeepingTask({ roomId, taskType, urgency, assignedTo, dueBy, suppliesNeeded }) {
+  async function createHousekeepingTask({ roomId, taskType, urgency, assignedTo, dueBy, suppliesNeeded }) {
     const room = baseRooms.find((entry) => entry.id === roomId);
 
     if (!room) {
@@ -725,6 +955,15 @@ export function HotelAppProvider({ children }) {
         ? suppliesNeeded.split(",").map((item) => item.trim()).filter(Boolean)
         : [],
     };
+
+    const saved = await syncToDatabase("operations.php", {
+      action: "createHousekeeping",
+      ...task,
+    });
+
+    if (!saved) {
+      return null;
+    }
 
     updateHotelData({
       housekeepingTasks: [task, ...housekeepingTasks],
@@ -749,9 +988,14 @@ export function HotelAppProvider({ children }) {
           : task,
       ),
     });
+    syncToDatabase("operations.php", {
+      action: "housekeepingStatus",
+      taskId,
+      status,
+    });
   }
 
-  function createMaintenanceRequest({ roomId, issueType, issue, priority, assignedTo }) {
+  async function createMaintenanceRequest({ roomId, issueType, issue, priority, assignedTo }) {
     const room = baseRooms.find((entry) => entry.id === roomId);
 
     if (!room || !issue.trim()) {
@@ -772,6 +1016,15 @@ export function HotelAppProvider({ children }) {
       submittedDate: businessDate,
     };
 
+    const saved = await syncToDatabase("operations.php", {
+      action: "createMaintenance",
+      ...request,
+    });
+
+    if (!saved) {
+      return null;
+    }
+
     updateHotelData({
       maintenanceRequests: [request, ...maintenanceRequests],
     });
@@ -784,6 +1037,21 @@ export function HotelAppProvider({ children }) {
         request.id === requestId ? { ...request, status } : request,
       ),
     });
+    syncToDatabase("operations.php", {
+      action: "maintenanceStatus",
+      requestId,
+      status,
+    });
+  }
+
+  function deleteMaintenanceRequest(requestId) {
+    updateHotelData({
+      maintenanceRequests: maintenanceRequests.filter((request) => request.id !== requestId),
+    });
+    syncToDatabase("operations.php", {
+      action: "deleteMaintenance",
+      requestId,
+    });
   }
 
   function restockInventoryItem(itemId) {
@@ -791,6 +1059,10 @@ export function HotelAppProvider({ children }) {
       inventoryItems: inventoryItems.map((item) =>
         item.id === itemId ? { ...item, stock: item.reorderLevel + 25 } : item,
       ),
+    });
+    syncToDatabase("operations.php", {
+      action: "restockInventory",
+      itemId,
     });
   }
 
@@ -807,10 +1079,29 @@ export function HotelAppProvider({ children }) {
           : item,
       ),
     });
+    const currentItem = inventoryItems.find((item) => item.id === itemId);
+
+    if (currentItem) {
+      syncToDatabase("operations.php", {
+        action: "updateInventory",
+        itemId,
+        stock: Number(changes.stock ?? currentItem.stock),
+        reorderLevel: Number(changes.reorderLevel ?? currentItem.reorderLevel),
+      });
+    }
   }
 
-  const notificationItems = [
-    ...(settings.arrivalAlerts
+  function deleteInventoryItem(itemId) {
+    updateHotelData({
+      inventoryItems: inventoryItems.filter((item) => item.id !== itemId),
+    });
+    syncToDatabase("operations.php", {
+      action: "deleteInventory",
+      itemId,
+    });
+  }
+
+  const staffArrivalNotifications = settings.arrivalAlerts
       ? [
           ...arrivalsToday.map((reservation) => ({
             id: `arrival-${reservation.id}`,
@@ -827,8 +1118,9 @@ export function HotelAppProvider({ children }) {
             path: "/app/front-desk",
           })),
         ]
-      : []),
-    ...(settings.maintenanceAlerts
+      : [];
+
+  const staffMaintenanceNotifications = settings.maintenanceAlerts
       ? openMaintenance.map((request) => ({
           id: `maintenance-${request.id}`,
           title: `Maintenance in Room ${request.roomNumber}`,
@@ -836,8 +1128,17 @@ export function HotelAppProvider({ children }) {
           type: request.priority,
           path: "/operations",
         }))
-      : []),
-    ...(settings.inventoryAlerts
+      : [];
+
+  const staffHousekeepingNotifications = openHousekeeping.map((task) => ({
+    id: `housekeeping-${task.id}`,
+    title: `Housekeeping in Room ${task.roomNumber}`,
+    detail: task.taskType,
+    type: task.urgency,
+    path: "/operations",
+  }));
+
+  const staffInventoryNotifications = settings.inventoryAlerts
       ? inventoryAlerts.map((item) => ({
           id: `inventory-${item.id}`,
           title: `${item.name} is low`,
@@ -845,8 +1146,9 @@ export function HotelAppProvider({ children }) {
           type: "Low",
           path: "/operations",
         }))
-      : []),
-    ...reservations
+      : [];
+
+  const staffPaymentNotifications = reservations
       .filter(
         (reservation) =>
           ["pending", "failed"].includes(reservation.paymentStatus) &&
@@ -859,8 +1161,55 @@ export function HotelAppProvider({ children }) {
         detail: `Reservation ${reservation.id}`,
         type: reservation.paymentStatus,
         path: "/app/front-desk",
-      })),
-  ];
+      }));
+
+  const guestNotificationItems = guestReservations
+    .filter((reservation) => !["cancelled", "checked-out", "no-show"].includes(reservation.status))
+    .flatMap((reservation) => {
+      const items = [];
+
+      if (["pending", "failed"].includes(reservation.paymentStatus) && reservation.balanceDue > 0) {
+        items.push({
+          id: `guest-payment-${reservation.id}`,
+          title: "Payment due",
+          detail: `Reservation ${reservation.id}`,
+          type: reservation.paymentStatus,
+          path: "/app/my-stays",
+        });
+      }
+
+      if (reservation.checkIn === businessDate && reservation.status === "confirmed") {
+        items.push({
+          id: `guest-checkin-${reservation.id}`,
+          title: "Check-in available today",
+          detail: `Room ${reservation.roomNumber}`,
+          type: "Arrival",
+          path: "/app/check-in",
+        });
+      }
+
+      return items;
+    });
+
+  const staffNotificationItems =
+    session?.role === "management"
+      ? [
+          ...staffArrivalNotifications,
+          ...staffHousekeepingNotifications,
+          ...staffMaintenanceNotifications,
+          ...staffInventoryNotifications,
+          ...staffPaymentNotifications,
+        ]
+      : session?.role === "reception"
+        ? [...staffArrivalNotifications, ...staffPaymentNotifications]
+        : session?.role === "housekeeping"
+          ? staffHousekeepingNotifications
+          : session?.role === "maintenance"
+            ? staffMaintenanceNotifications
+            : [];
+
+  const notificationItems =
+    session?.role === "guest" ? guestNotificationItems : staffNotificationItems;
   const notifications = notificationItems.length;
 
   function getReservationById(reservationId) {
@@ -870,6 +1219,7 @@ export function HotelAppProvider({ children }) {
   const value = {
     businessDate,
     businessDateLabel: formatLongDate(businessDate),
+    amenities,
     currentGuest,
     getReservationById,
     guestProfiles,
@@ -881,7 +1231,9 @@ export function HotelAppProvider({ children }) {
     inventoryItems,
     latestReservation,
     latestReservationId,
-    loginAs,
+    loginGuest,
+    loginManagement,
+    loginStaff,
     logout,
     maintenanceRequests,
     metrics,
@@ -898,10 +1250,12 @@ export function HotelAppProvider({ children }) {
     setLatestReservationId: (id) => updateHotelData({ latestReservationId: id }),
     setSearchQuery,
     createGuest,
+    createGuestAccount,
+    deleteInventoryItem,
+    deleteMaintenanceRequest,
     getAvailableRooms,
     getBookingError,
     isRoomAvailable,
-    resetDemoData,
     addReservationCard,
     authorizeReservationPayment,
     captureReservationPayment,

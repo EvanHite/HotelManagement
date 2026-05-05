@@ -45,7 +45,7 @@ export const guestNavigation = [
     roles: ["guest"],
   },
   {
-    label: "Stay History",
+    label: "My Stays",
     path: "/app/my-stays",
     icon: "stays",
     roles: ["guest"],

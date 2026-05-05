@@ -14,7 +14,7 @@ export function MyStaysPage() {
 
   return (
     <>
-      <SectionHeading title="Stay History" />
+      <SectionHeading title="My Stays" />
 
       <div className="grid gap-4 md:grid-cols-3">
         <KpiCard label="Loyalty Tier" value={currentGuest?.loyaltyTier ?? "-"} detail="Current guest status" />
@@ -35,6 +35,16 @@ export function MyStaysPage() {
                 render: (row) => formatDateRange(row.checkIn, row.checkOut),
               },
               { key: "status", header: "Status", render: (row) => <StatusBadge value={row.status} /> },
+              {
+                key: "paymentStatus",
+                header: "Payment",
+                render: (row) => <StatusBadge value={row.paymentStatus} />,
+              },
+              {
+                key: "balanceDue",
+                header: "Balance",
+                render: (row) => formatMoney(row.balanceDue),
+              },
               { key: "total", header: "Total", render: (row) => formatMoney(row.total) },
               {
                 key: "actions",
@@ -58,8 +68,8 @@ export function MyStaysPage() {
               },
             ]}
             rows={guestReservations}
-            emptyTitle="No reservations"
-            emptyDescription="Your reservation history will appear here."
+            emptyTitle="No stays yet"
+            emptyDescription="Book a room to see your stays here."
           />
         </Panel>
 

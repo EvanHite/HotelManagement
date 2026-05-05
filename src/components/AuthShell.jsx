@@ -9,7 +9,6 @@ export function AuthShell({
   activePortal,
   title,
   subtitle,
-  metrics,
   actions,
   children,
 }) {
@@ -52,14 +51,9 @@ export function AuthShell({
               </nav>
 
               <div className="mt-6 border-t border-slate-200 pt-4">
-                <div className="space-y-3">
-                  {metrics.map((metric) => (
-                    <div key={metric.label} className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">{metric.label}</span>
-                      <span className="font-medium text-slate-900">{metric.value}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-sm leading-5 text-slate-500">
+                  Sign in with your assigned staff or management account.
+                </p>
               </div>
             </aside>
 

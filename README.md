@@ -1,6 +1,6 @@
-﻿# Hotel Management Frontend MVP
+# Hotel Management MVP
 
-A React + Tailwind hotel management platform for guest self-service and hotel staff operations. The app currently runs from browser localStorage for easy demo work, with PHP + MySQL files kept for the later database step.
+A React hotel management MVP for public room booking, guest self-service, and staff operations. The app is SQL-first: React loads hotel data through the PHP API, and PHP reads/writes the Hostinger MySQL database.
 
 ## Stack
 
@@ -8,153 +8,173 @@ A React + Tailwind hotel management platform for guest self-service and hotel st
 - Vite
 - React Router
 - Tailwind CSS
-- PHP
-- MySQL
+- PHP/MySQL on Hostinger
 
-## Core Deliverables
+## Current Features
 
-- Premium light-mode SaaS app shell with sidebar, top bar, and responsive layout
-- Guest portal for booking, amenities, stay history, and check-in/check-out
-- Staff tools for dashboard, reservations, guests, rooms, housekeeping, maintenance, inventory, reports, and settings
-- LocalStorage-backed demo data while the SQL database is being prepared
-- Reusable UI components for panels, tables, badges, KPI blocks, forms, and empty states
+- Public room search and booking at `/`
+- Guest account sign-in with email/password
+- Guest booking confirmation, amenities, my stays, and check-in/check-out
+- Staff overview, front desk, operations, reports, and settings
+- Front desk reservation payment demo with masked card data only
+- MySQL-backed rooms, guests, reservations, operations, amenities, and settings
+- Token-protected PHP API writes for signed-in users
+- Guest registration with email/password validation
+- Login rate limiting through the `login_attempts` table
+- Maintenance request and inventory item delete actions for DB delete requirements
 
-## Demo Roles
+## Sample Logins
 
-Use the landing page to sign in as:
+Staff and management auth checks seeded users. Seeded passwords keep the same presentation-friendly values, but the PHP API upgrades older seeded plain passwords to `password_hash()` after the first successful login.
 
-- Guest
-- Reception
-- Housekeeping
-- Maintenance
-- Management
+- Reception: choose `Reception`, employee ID `REC100`, password `staff123`
+- Housekeeping: choose `Housekeeping`, employee ID `HK100`, password `staff123`
+- Maintenance: choose `Maintenance`, employee ID `MX100`, password `staff123`
+- Management: email `elena.foster@harborhouse.example`, password `manager123`
 
-## Route Map
+Guest demo accounts use password `guest123`.
 
-### Guest
-- `/app/book`
-- `/app/amenities`
-- `/app/my-stays`
-- `/app/check-in`
+- `ava.bennett@example.com`
+- `marcus.reed@example.com`
+- `priya.sharma@example.com`
+- `lauren.cole@example.com`
+- `devon.ellis@example.com`
+- `sofia.martinez@example.com`
 
-### Staff
-- `/app/overview`
-- `/app/front-desk`
-- `/app/operations`
-- `/app/reports`
-- `/app/settings`
+## Important Routes
 
-## Feature Map
+- Public booking: `/`
+- Guest sign-in: `/guest/sign-in`
+- Staff sign-in: `/staff/sign-in`
+- Management sign-in: `/management/sign-in`
+- Guest app: `/app/book`, `/app/my-stays`, `/app/check-in`, `/app/amenities`
+- Staff app: `/app/overview`, `/app/front-desk`, `/operations`, `/app/reports`, `/app/settings`
 
-### Guest Experience
-- Browse available room inventory
-- Create a mock booking
-- Review amenities and service information
-- View stay history and loyalty standing
-- Complete mock check-in and check-out actions
+## Local Development
 
-### Staff Experience
-- View hotel-wide dashboard KPIs
-- Manage reservations and booking status changes
-- Inspect guest profiles and stay history
-- Track room readiness and current room status
-- Update housekeeping task progress
-- Update maintenance request progress
-- Monitor inventory alerts and restock items
-- Review lightweight management reports
-- Edit placeholder hotel settings
-
-## Component Inventory
-
-### Layout
-- `AppShell`
-- `Sidebar`
-- `TopBar`
-
-### Shared UI
-- `Panel`
-- `SectionHeading`
-- `StatusBadge`
-- `KpiCard`
-- `DataTable`
-- `EmptyState`
-- `BookingForm`
-
-## Design Contract
-
-This app intentionally follows a fixed design brief:
-
-- Light mode only
-- White and off-white surfaces
-- Thin borders over heavy shadows
-- Restrained blue accents
-- Compact professional spacing
-- Moderate border radius
-- Clean enterprise tables and status badges
-- No bubbly cards, gimmicky gradients, or marketing-dashboard styling
-
-## Project Structure
-
-```text
-src/
-  components/
-  config/
-  context/
-  data/
-  pages/
-  types/
-  utils/
-```
-
-## Local Setup
+Install dependencies once:
 
 ```bash
 npm install
+```
+
+Run locally:
+
+```bash
 npm run dev
 ```
 
-The local app runs at the Vite URL shown in your terminal, usually:
+Local dev still runs the React app, but hotel data comes from the PHP/MySQL API. If the API is not available, the app shows a database setup error instead of loading fake browser data.
+
+## Hostinger Deployment
+
+This project does not need Node running on Hostinger. Node/Vite is only used locally to build the static files.
+
+The app is configured for this deployed path:
 
 ```text
-http://localhost:5173
+https://internetprogramming.io/HotelManagement/
 ```
 
-Bookings, status updates, notes, and inventory changes are saved in your browser localStorage. To reset the demo data, clear site data for localhost in your browser.
+That is why `vite.config.js` uses:
 
-## Hostinger + MySQL Setup
+```js
+base: "/HotelManagement/"
+```
 
-The repo includes files for a later Hostinger deployment path:
+React Router also uses the same base path through `import.meta.env.BASE_URL`, so `/HotelManagement/` stays inside the app instead of redirecting to the domain root.
 
-- React builds to static files.
-- Grouped PHP files in `public/api/` act as the backend.
-- MySQL stores hotel data.
-
-See `HOSTINGER_SETUP.md` when you are ready to connect MySQL.
-
-## How The App Works
-
-1. React shows the hotel screens in the browser.
-2. For now, React saves demo changes in browser localStorage.
-3. Later, React can call PHP files in `public/api/`.
-4. PHP will read from and write to MySQL.
-
-## Production Build
+Build locally:
 
 ```bash
 npm run build
 ```
 
-## Demo Walkthrough
+Upload only the contents of:
 
-1. Open the landing page and select a role.
-2. Review the dashboard or guest portal entry view.
-3. Create a booking from the booking form.
-4. Update a reservation status to check in or check out.
-5. Watch housekeeping, maintenance, room status, and inventory views update from the shared mock state.
-6. Use the management role to review reports and settings.
+```text
+dist/
+```
 
-## Notes
+to Hostinger:
 
-- This is still an MVP, not a production hotel system.
-- There is no payment gateway, production authentication, or external integration.
-- Local development uses localStorage until the SQL step is connected.
+```text
+public_html/HotelManagement/
+```
+
+Do not upload the source project folders/files for production:
+
+```text
+node_modules/
+src/
+package.json
+package-lock.json
+vite.config.js
+README.md
+```
+
+The production upload should look small, usually:
+
+```text
+index.html
+assets/
+api/
+.htaccess
+```
+
+That is normal. Vite bundles the React source into the files inside `assets/`.
+
+## PHP/MySQL Setup
+
+The app now tries to load data from:
+
+```text
+/HotelManagement/api/data.php
+```
+
+If the API works, changes are saved through PHP into MySQL. If the API is unavailable, the app shows a database setup error. Seed data belongs in `database/seed.sql`, not duplicated in React.
+
+In phpMyAdmin, import these files in order:
+
+```text
+database/schema.sql
+database/seed.sql
+```
+
+The current schema includes `staff_users`, guest passwords, reservation payment fields, amenities, app settings, unique login identifiers, and `login_attempts`. If your Hostinger database was created from an older schema, start with an empty database and re-import both SQL files unless you need to preserve test data.
+
+The real Hostinger credentials live in:
+
+```text
+public/api/config.local.php
+```
+
+That file is ignored by git. Keep it private.
+
+Auth behavior:
+
+- Login returns a signed token.
+- React sends that token on protected API writes.
+- PHP rejects missing, expired, or wrong-role tokens.
+- New guest account passwords are hashed immediately.
+- Seeded demo passwords are upgraded to hashed passwords on successful login.
+- Failed login attempts are rate-limited.
+
+Validation behavior:
+
+- Guest registration requires a valid email address.
+- Passwords must be at least 6 characters and cannot be all letters or all numbers.
+- Booking dates, capacity, payment amounts, inventory counts, and demo card fields are validated in React and PHP.
+- Hostinger production shows an API/database setup error if the PHP API is unavailable.
+
+See `HOSTINGER_SETUP.md` for the step-by-step checklist.
+
+## Build Check
+
+After `npm run build`, confirm `dist/index.html` references assets like:
+
+```html
+/HotelManagement/assets/...
+```
+
+If the deployed page is blank, check browser DevTools > Network for missing asset files or 404s.

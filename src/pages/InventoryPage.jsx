@@ -8,10 +8,12 @@ import { matchesSearch } from "../utils/formatters";
 
 export function InventorySection({ showHeading = true } = {}) {
   const {
+    deleteInventoryItem,
     inventoryAlerts,
     inventoryItems,
     restockInventoryItem,
     searchQuery,
+    session,
     updateInventoryItem,
   } = useHotelApp();
   const categories = ["all", ...Array.from(new Set(inventoryItems.map((item) => item.category)))];
@@ -58,6 +60,15 @@ export function InventorySection({ showHeading = true } = {}) {
       stock: Number(stockDraft || selectedItem.stock),
       reorderLevel: Number(reorderDraft || selectedItem.reorderLevel),
     });
+  }
+
+  function handleDeleteItem() {
+    if (!selectedItem || !window.confirm("Delete this inventory item?")) {
+      return;
+    }
+
+    deleteInventoryItem(selectedItem.id);
+    setSelectedItemId("");
   }
 
   return (
@@ -196,9 +207,16 @@ export function InventorySection({ showHeading = true } = {}) {
                     />
                   </label>
                 </div>
-                <button className="btn-secondary" type="button" onClick={saveInventoryItem}>
-                  Save stock
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button className="btn-secondary" type="button" onClick={saveInventoryItem}>
+                    Save stock
+                  </button>
+                  {session.role === "management" && (
+                    <button className="btn-danger" type="button" onClick={handleDeleteItem}>
+                      Delete item
+                    </button>
+                  )}
+                </div>
               </div>
             </Panel>
           )}

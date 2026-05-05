@@ -11,7 +11,7 @@ const roleOptions = [
 ];
 
 export function StaffSignInPage() {
-  const { hotels, loginAs, metrics } = useHotelApp();
+  const { hotels, loginStaff } = useHotelApp();
   const navigate = useNavigate();
   const [hotelId, setHotelId] = useState(hotels[0]?.id ?? "");
   const [role, setRole] = useState("reception");
@@ -19,7 +19,7 @@ export function StaffSignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     if (!employeeId.trim() || !password.trim()) {
@@ -27,7 +27,13 @@ export function StaffSignInPage() {
       return;
     }
 
-    loginAs(role);
+    const user = await loginStaff(role, employeeId, password);
+
+    if (!user) {
+      setError("Employee ID, role, or password did not match.");
+      return;
+    }
+
     navigate(getDefaultRoute(role));
   }
 
@@ -36,11 +42,6 @@ export function StaffSignInPage() {
       activePortal="staff"
       title="Staff Sign In"
       subtitle="Reception, housekeeping, and maintenance"
-      metrics={[
-        { label: "Arrivals", value: metrics.arrivalsToday },
-        { label: "Cleaning", value: metrics.roomsNeedingCleaning },
-        { label: "Open issues", value: metrics.openMaintenanceCount },
-      ]}
       actions={
         <Link className="btn-secondary" to="/">
           Back
@@ -82,6 +83,7 @@ export function StaffSignInPage() {
           <span className="field-label">Employee ID</span>
           <input
             className="input-base"
+            required
             value={employeeId}
             onChange={(event) => setEmployeeId(event.target.value)}
             placeholder="Enter employee ID"
@@ -93,6 +95,7 @@ export function StaffSignInPage() {
           <input
             className="input-base"
             type="password"
+            required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Enter password"

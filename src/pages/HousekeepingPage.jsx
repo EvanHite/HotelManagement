@@ -53,10 +53,10 @@ export function HousekeepingSection({ showHeading = true } = {}) {
     filteredTasks[0] ??
     null;
 
-  function handleCreateTask(event) {
+  async function handleCreateTask(event) {
     event.preventDefault();
 
-    const createdTask = createHousekeepingTask(newTask);
+    const createdTask = await createHousekeepingTask(newTask);
 
     if (!createdTask) {
       return;

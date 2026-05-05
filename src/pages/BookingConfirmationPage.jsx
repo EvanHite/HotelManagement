@@ -44,6 +44,14 @@ export function BookingConfirmationPage() {
               </div>
             </div>
             <div>
+              <p className="text-xs font-medium text-slate-500">Card</p>
+              <p className="mt-1 text-sm text-slate-700">
+                {latestReservation.paymentMethod
+                  ? `${latestReservation.paymentMethod.brand} ending ${latestReservation.paymentMethod.last4}`
+                  : "No card on file"}
+              </p>
+            </div>
+            <div>
               <p className="text-xs font-medium text-slate-500">Guests</p>
               <p className="mt-1 text-sm text-slate-700">
                 {latestReservation.adults} adult{latestReservation.adults === 1 ? "" : "s"}
@@ -52,6 +60,18 @@ export function BookingConfirmationPage() {
             <div>
               <p className="text-xs font-medium text-slate-500">Total</p>
               <p className="mt-1 text-sm text-slate-700">{formatMoney(latestReservation.total)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500">Paid</p>
+              <p className="mt-1 text-sm text-slate-700">
+                {formatMoney(latestReservation.amountPaid)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500">Balance due</p>
+              <p className="mt-1 text-sm text-slate-700">
+                {formatMoney(latestReservation.balanceDue)}
+              </p>
             </div>
           </div>
         </Panel>

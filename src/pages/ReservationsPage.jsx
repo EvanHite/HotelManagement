@@ -158,8 +158,12 @@ export function ReservationsSection({ showHeading = true } = {}) {
   function saveDemoCard() {
     const cleanLast4 = cardLast4.replace(/\D/g, "").slice(-4);
 
-    if (cleanLast4.length !== 4 || !cardExpiry.trim() || !cardholderName.trim()) {
-      setPaymentFeedback("Enter cardholder, last 4, and expiry.");
+    if (
+      cleanLast4.length !== 4 ||
+      !/^\d{2}\/\d{2}$/.test(cardExpiry.trim()) ||
+      !cardholderName.trim()
+    ) {
+      setPaymentFeedback("Enter cardholder, 4 digits, and expiry as MM/YY.");
       return;
     }
 

@@ -89,9 +89,9 @@ export function GuestsSection({ showHeading = true } = {}) {
     }));
   }
 
-  function saveGuest() {
-    if (!guestDraft.name.trim()) {
-      setGuestFeedback("Guest name is required.");
+  async function saveGuest() {
+    if (!guestDraft.name.trim() || !guestDraft.email.trim()) {
+      setGuestFeedback("Guest name and email are required.");
       return;
     }
 
@@ -102,7 +102,7 @@ export function GuestsSection({ showHeading = true } = {}) {
       return;
     }
 
-    const createdGuest = createGuest(guestDraft);
+    const createdGuest = await createGuest(guestDraft);
 
     if (!createdGuest) {
       setGuestFeedback("Guest could not be saved.");

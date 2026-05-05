@@ -3,7 +3,7 @@ import { SectionHeading } from "../components/ui";
 import { useHotelApp } from "../context/HotelAppContext";
 
 export function SettingsPage() {
-  const { resetDemoData, settings, updateSettings } = useHotelApp();
+  const { settings, updateSettings } = useHotelApp();
 
   function changeSetting(field, value) {
     updateSettings({ [field]: value });
@@ -11,14 +11,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <SectionHeading
-        title="Settings"
-        actions={
-          <button className="btn-danger" type="button" onClick={resetDemoData}>
-            Reset demo data
-          </button>
-        }
-      />
+      <SectionHeading title="Settings" />
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Panel title="Hotel profile">

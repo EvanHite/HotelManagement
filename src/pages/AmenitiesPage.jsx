@@ -1,10 +1,11 @@
 import { Panel } from "../components/ui";
 import { SectionHeading } from "../components/ui";
-import { amenities } from "../data/mockData";
+import { useHotelApp } from "../context/HotelAppContext";
 
 export function AmenitiesPage() {
-  const included = amenities.slice(0, 3);
-  const requestable = amenities.slice(3);
+  const { amenities } = useHotelApp();
+  const included = amenities.filter((item) => item.amenityGroup === "included");
+  const requestable = amenities.filter((item) => item.amenityGroup === "requestable");
 
   return (
     <>
