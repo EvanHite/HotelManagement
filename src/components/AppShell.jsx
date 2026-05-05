@@ -1,18 +1,48 @@
+import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { useHotelApp } from "../context/HotelAppContext";
 
 export function AppShell({ children }) {
+  const { dataError } = useHotelApp();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#f4f5f7]">
       <div className="lg:grid lg:min-h-screen lg:grid-cols-[252px_minmax(0,1fr)]">
-        <Sidebar />
+        <div className="hidden lg:block">
+          <Sidebar />
+        </div>
         <div className="min-w-0">
-          <TopBar />
-          <main className="px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
-            <div className="mx-auto flex max-w-[1440px] flex-col gap-5">{children}</div>
+          <TopBar onMenuClick={() => setIsMobileMenuOpen(true)} />
+          {dataError ? (
+            <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 sm:px-6 lg:px-8">
+              {dataError}
+            </div>
+          ) : null}
+          <main className="py-4 lg:py-6">
+            <div className="app-container flex flex-col gap-5">{children}</div>
           </main>
         </div>
       </div>
+
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            className="absolute inset-0 bg-slate-950/30"
+            type="button"
+            aria-label="Close navigation"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative h-full w-[min(82vw,300px)] border-r border-slate-200 bg-white">
+            <Sidebar
+              isMobile
+              onClose={() => setIsMobileMenuOpen(false)}
+              onNavigate={() => setIsMobileMenuOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

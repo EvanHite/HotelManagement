@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { DataTable } from "../components/DataTable";
-import { Panel } from "../components/Panel";
-import { SectionHeading } from "../components/SectionHeading";
-import { StatusBadge } from "../components/StatusBadge";
+import { Panel } from "../components/ui";
+import { SectionHeading } from "../components/ui";
+import { StatusBadge } from "../components/ui";
 import { useHotelApp } from "../context/HotelAppContext";
 import { matchesSearch } from "../utils/formatters";
 
-export function InventoryPage() {
+export function InventorySection({ showHeading = true } = {}) {
   const { inventoryAlerts, inventoryItems, restockInventoryItem, searchQuery } = useHotelApp();
   const categories = ["all", ...Array.from(new Set(inventoryItems.map((item) => item.category)))];
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -27,7 +27,7 @@ export function InventoryPage() {
 
   return (
     <>
-      <SectionHeading title="Inventory" />
+      {showHeading && <SectionHeading title="Inventory" />}
 
       <div className="flex justify-end">
         <select

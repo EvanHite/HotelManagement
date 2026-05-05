@@ -1,7 +1,7 @@
-import { Navigate } from "react-router-dom";
-import { Panel } from "../components/Panel";
-import { SectionHeading } from "../components/SectionHeading";
-import { StatusBadge } from "../components/StatusBadge";
+import { Link, Navigate } from "react-router-dom";
+import { Panel } from "../components/ui";
+import { SectionHeading } from "../components/ui";
+import { StatusBadge } from "../components/ui";
 import { useHotelApp } from "../context/HotelAppContext";
 import { formatDateRange, formatMoney } from "../utils/formatters";
 
@@ -14,10 +14,7 @@ export function BookingConfirmationPage() {
 
   return (
     <>
-      <SectionHeading
-        title="Booking Confirmation"
-        description="Reservation created successfully in the guest portal."
-      />
+      <SectionHeading title="Booking Confirmation" />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_340px]">
         <Panel title={latestReservation.id} description={latestReservation.guestName}>
@@ -41,6 +38,18 @@ export function BookingConfirmationPage() {
               </div>
             </div>
             <div>
+              <p className="text-xs font-medium text-slate-500">Payment</p>
+              <div className="mt-1">
+                <StatusBadge value={latestReservation.paymentStatus} />
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500">Guests</p>
+              <p className="mt-1 text-sm text-slate-700">
+                {latestReservation.adults} adult{latestReservation.adults === 1 ? "" : "s"}
+              </p>
+            </div>
+            <div>
               <p className="text-xs font-medium text-slate-500">Total</p>
               <p className="mt-1 text-sm text-slate-700">{formatMoney(latestReservation.total)}</p>
             </div>
@@ -48,10 +57,13 @@ export function BookingConfirmationPage() {
         </Panel>
 
         <Panel title="Next steps">
-          <div className="space-y-3 text-sm text-slate-600">
-            <p>Your reservation is stored in the stay history screen.</p>
-            <p>Use the Check-In page when your arrival date begins.</p>
-            <p>Property staff can also see this reservation in Reservations.</p>
+          <div className="flex flex-wrap gap-2">
+            <Link className="btn-secondary" to="/app/my-stays">
+              Stay history
+            </Link>
+            <Link className="btn-primary" to="/app/check-in">
+              Check in
+            </Link>
           </div>
         </Panel>
       </div>

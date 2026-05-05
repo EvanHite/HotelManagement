@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { BookingForm } from "../components/BookingForm";
 import { DataTable } from "../components/DataTable";
-import { Panel } from "../components/Panel";
-import { SectionHeading } from "../components/SectionHeading";
-import { StatusBadge } from "../components/StatusBadge";
+import { Panel } from "../components/ui";
+import { SectionHeading } from "../components/ui";
+import { StatusBadge } from "../components/ui";
 import { useHotelApp } from "../context/HotelAppContext";
 import { formatMoney } from "../utils/formatters";
 
@@ -12,8 +12,8 @@ export function BookStayPage() {
   const navigate = useNavigate();
   const availableRooms = roomViews.filter((room) => room.displayStatus !== "maintenance");
 
-  function handleCreateBooking(payload) {
-    const reservation = createBooking(payload);
+  async function handleCreateBooking(payload) {
+    const reservation = await createBooking(payload);
 
     if (reservation) {
       navigate("/app/booking-confirmation");
@@ -24,13 +24,10 @@ export function BookStayPage() {
 
   return (
     <>
-      <SectionHeading
-        title="Book"
-        description="Browse room availability and create a guest reservation."
-      />
+      <SectionHeading title="Book" />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_360px]">
-        <Panel title="Room availability" description="Current room inventory available for booking.">
+        <Panel title="Room availability">
           <DataTable
             columns={[
               { key: "number", header: "Room", render: (row) => `Room ${row.number}` },
@@ -63,7 +60,6 @@ export function BookStayPage() {
           currentGuest={currentGuest}
           onSubmit={handleCreateBooking}
           title="Reservation"
-          description="Complete booking details for the selected guest."
           submitLabel="Confirm booking"
         />
       </div>

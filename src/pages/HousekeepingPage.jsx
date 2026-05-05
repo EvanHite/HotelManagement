@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { DataTable } from "../components/DataTable";
-import { FilterTabs } from "../components/FilterTabs";
-import { Panel } from "../components/Panel";
-import { SectionHeading } from "../components/SectionHeading";
-import { StatusBadge } from "../components/StatusBadge";
+import { FilterTabs } from "../components/ui";
+import { Panel } from "../components/ui";
+import { SectionHeading } from "../components/ui";
+import { StatusBadge } from "../components/ui";
 import { useHotelApp } from "../context/HotelAppContext";
 import { matchesSearch } from "../utils/formatters";
 
@@ -14,10 +14,24 @@ const statusOptions = [
   { label: "Completed", value: "completed" },
 ];
 
-export function HousekeepingPage() {
-  const { housekeepingTasks, searchQuery, updateHousekeepingTask } = useHotelApp();
+export function HousekeepingSection({ showHeading = true } = {}) {
+  const {
+    createHousekeepingTask,
+    housekeepingTasks,
+    roomViews,
+    searchQuery,
+    updateHousekeepingTask,
+  } = useHotelApp();
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedTaskId, setSelectedTaskId] = useState(housekeepingTasks[0]?.id ?? "");
+  const [newTask, setNewTask] = useState({
+    roomId: roomViews[0]?.id ?? "",
+    taskType: "Departure reset",
+    urgency: "standard",
+    assignedTo: "Marisol Diaz",
+    dueBy: "12:00",
+    suppliesNeeded: "",
+  });
 
   const filteredTasks = useMemo(
     () =>
@@ -39,17 +53,122 @@ export function HousekeepingPage() {
     filteredTasks[0] ??
     null;
 
+  function handleCreateTask(event) {
+    event.preventDefault();
+
+    const createdTask = createHousekeepingTask(newTask);
+
+    if (!createdTask) {
+      return;
+    }
+
+    setSelectedTaskId(createdTask.id);
+    setNewTask({
+      roomId: roomViews[0]?.id ?? "",
+      taskType: "Departure reset",
+      urgency: "standard",
+      assignedTo: "Marisol Diaz",
+      dueBy: "12:00",
+      suppliesNeeded: "",
+    });
+  }
+
   return (
     <>
-      <SectionHeading
-        title="Housekeeping"
-        description="Task execution, room turnover, and supply readiness for guest rooms."
-      />
+      {showHeading && <SectionHeading title="Housekeeping" />}
 
       <FilterTabs options={statusOptions} value={statusFilter} onChange={setStatusFilter} />
 
+      <Panel title="Create task">
+        <form className="grid gap-3 md:grid-cols-3 xl:grid-cols-6" onSubmit={handleCreateTask}>
+          <label>
+            <span className="field-label">Room</span>
+            <select
+              className="input-base"
+              value={newTask.roomId}
+              onChange={(event) =>
+                setNewTask((current) => ({ ...current, roomId: event.target.value }))
+              }
+            >
+              {roomViews.map((room) => (
+                <option key={room.id} value={room.id}>
+                  Room {room.number}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="field-label">Task</span>
+            <select
+              className="input-base"
+              value={newTask.taskType}
+              onChange={(event) =>
+                setNewTask((current) => ({ ...current, taskType: event.target.value }))
+              }
+            >
+              <option value="Departure reset">Departure reset</option>
+              <option value="Light touch service">Light touch service</option>
+              <option value="Towel restock">Towel restock</option>
+              <option value="Amenity setup">Amenity setup</option>
+            </select>
+          </label>
+          <label>
+            <span className="field-label">Priority</span>
+            <select
+              className="input-base"
+              value={newTask.urgency}
+              onChange={(event) =>
+                setNewTask((current) => ({ ...current, urgency: event.target.value }))
+              }
+            >
+              <option value="standard">Standard</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+          <label>
+            <span className="field-label">Assigned</span>
+            <input
+              className="input-base"
+              required
+              value={newTask.assignedTo}
+              onChange={(event) =>
+                setNewTask((current) => ({ ...current, assignedTo: event.target.value }))
+              }
+            />
+          </label>
+          <label>
+            <span className="field-label">Due</span>
+            <input
+              className="input-base"
+              required
+              type="time"
+              value={newTask.dueBy}
+              onChange={(event) =>
+                setNewTask((current) => ({ ...current, dueBy: event.target.value }))
+              }
+            />
+          </label>
+          <label>
+            <span className="field-label">Supplies</span>
+            <input
+              className="input-base"
+              placeholder="Towels, linens"
+              value={newTask.suppliesNeeded}
+              onChange={(event) =>
+                setNewTask((current) => ({ ...current, suppliesNeeded: event.target.value }))
+              }
+            />
+          </label>
+          <div className="md:col-span-3 xl:col-span-6">
+            <button className="btn-primary" type="submit">
+              Create task
+            </button>
+          </div>
+        </form>
+      </Panel>
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_360px]">
-        <Panel title="Task list" description="Room-by-room housekeeping workflow.">
+        <Panel title="Task list">
           <DataTable
             columns={[
               { key: "roomNumber", header: "Room", render: (row) => `Room ${row.roomNumber}` },

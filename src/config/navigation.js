@@ -2,46 +2,31 @@ export const staffNavigation = [
   {
     label: "Overview",
     path: "/app/overview",
+    icon: "overview",
     roles: ["reception", "housekeeping", "maintenance", "management"],
   },
   {
-    label: "Reservations",
-    path: "/app/reservations",
-    roles: ["reception", "management"],
-  },
-  {
-    label: "Guests",
-    path: "/app/guests",
-    roles: ["reception", "management"],
-  },
-  {
-    label: "Rooms",
-    path: "/app/rooms",
+    label: "Front Desk",
+    path: "/app/front-desk",
+    icon: "frontDesk",
     roles: ["reception", "housekeeping", "maintenance", "management"],
   },
   {
-    label: "Housekeeping",
-    path: "/app/housekeeping",
-    roles: ["housekeeping", "management"],
-  },
-  {
-    label: "Maintenance",
-    path: "/app/maintenance",
-    roles: ["maintenance", "management"],
-  },
-  {
-    label: "Inventory",
-    path: "/app/inventory",
+    label: "Operations",
+    path: "/operations",
+    icon: "operations",
     roles: ["housekeeping", "maintenance", "management"],
   },
   {
     label: "Reports",
     path: "/app/reports",
+    icon: "reports",
     roles: ["management"],
   },
   {
     label: "Settings",
     path: "/app/settings",
+    icon: "settings",
     roles: ["management"],
   },
 ];
@@ -50,21 +35,25 @@ export const guestNavigation = [
   {
     label: "Book",
     path: "/app/book",
+    icon: "book",
     roles: ["guest"],
   },
   {
     label: "Amenities",
     path: "/app/amenities",
+    icon: "amenities",
     roles: ["guest"],
   },
   {
     label: "Stay History",
     path: "/app/my-stays",
+    icon: "stays",
     roles: ["guest"],
   },
   {
     label: "Check-In",
     path: "/app/check-in",
+    icon: "checkIn",
     roles: ["guest"],
   },
 ];

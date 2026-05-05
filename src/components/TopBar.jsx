@@ -1,33 +1,41 @@
-import { useNavigate } from "react-router-dom";
 import { useHotelApp } from "../context/HotelAppContext";
 
-export function TopBar() {
+export function TopBar({ onMenuClick }) {
   const {
     hotels,
     notifications,
-    searchQuery,
     selectedHotelId,
     session,
-    setSearchQuery,
     setSelectedHotelId,
     logout,
   } = useHotelApp();
-  const navigate = useNavigate();
-
-  const canCreateBooking = ["guest", "reception", "management"].includes(session.role);
 
   return (
     <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-[1440px] gap-3 px-4 py-4 sm:px-6 min-[1480px]:grid-cols-[minmax(0,1fr)_auto] min-[1480px]:items-center xl:px-8">
-        <div className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_220px] lg:items-center">
-          <input
-            className="input-base min-w-0"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search reservations, guests, rooms"
-          />
+      <div className="app-container grid gap-3 py-4 min-[1120px]:grid-cols-[minmax(220px,260px)_minmax(0,1fr)] min-[1120px]:items-center">
+        <div className="grid min-w-0 grid-cols-[40px_minmax(0,1fr)] gap-2 lg:block">
+          <button
+            className="btn-secondary w-10 px-0 lg:hidden"
+            type="button"
+            aria-label="Open navigation"
+            onClick={onMenuClick}
+          >
+            <svg
+              aria-hidden="true"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M4 7h16M4 12h16M4 17h16"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="2"
+              />
+            </svg>
+          </button>
           <select
-            className="input-base min-w-0"
+            className="input-base w-full"
             value={selectedHotelId}
             onChange={(event) => setSelectedHotelId(event.target.value)}
           >
@@ -39,27 +47,39 @@ export function TopBar() {
           </select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 min-[1480px]:justify-end">
-          <button className="btn-secondary" type="button">
-            Alerts {notifications ? `(${notifications})` : ""}
-          </button>
-          {canCreateBooking && (
-            <button
-              className="btn-primary"
-              type="button"
-              onClick={() =>
-                navigate(session.role === "guest" ? "/app/book" : "/app/reservations")
-              }
+        <div className="hidden flex-wrap items-center gap-2 lg:flex min-[1120px]:justify-end">
+          <button
+            className="btn-secondary relative w-10 px-0"
+            type="button"
+            aria-label={`${notifications} notifications`}
+            title="Notifications"
+          >
+            <svg
+              aria-hidden="true"
+              className="mx-auto h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
             >
-              New Reservation
-            </button>
-          )}
-          <div className="grid min-w-[196px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-slate-300 bg-white px-3 py-2">
+              <path
+                d="M15 17H9m9-1.5V11a6 6 0 0 0-12 0v4.5L4.5 18h15L18 15.5ZM10 20h4"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+              />
+            </svg>
+            {notifications > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-slate-900 px-1 text-[10px] leading-none font-semibold text-white">
+                {notifications}
+              </span>
+            )}
+          </button>
+          <div className="grid h-10 min-w-[196px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-slate-300 bg-white px-3">
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-slate-900">{session.name}</p>
-              <p className="text-xs text-slate-500 capitalize">{session.role}</p>
+              <p className="truncate text-sm leading-4 font-medium text-slate-900">{session.name}</p>
+              <p className="truncate text-[11px] leading-3 text-slate-500 capitalize">{session.role}</p>
             </div>
-            <button className="btn-ghost" type="button" onClick={logout}>
+            <button className="btn-ghost h-8 px-2" type="button" onClick={logout}>
               Sign out
             </button>
           </div>

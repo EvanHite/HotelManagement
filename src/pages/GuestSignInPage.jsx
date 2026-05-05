@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Panel } from "../components/Panel";
+import { Panel } from "../components/ui";
 import { useHotelApp } from "../context/HotelAppContext";
 import { getDefaultRoute } from "../config/navigation";
 

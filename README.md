@@ -1,6 +1,6 @@
 ﻿# Hotel Management Frontend MVP
 
-A React + Tailwind hotel management platform for guest self-service and hotel staff operations. This project is built as a frontend MVP with realistic mock data and role-based flows.
+A React + Tailwind hotel management platform for guest self-service and hotel staff operations. The app currently runs from browser localStorage for easy demo work, with PHP + MySQL files kept for the later database step.
 
 ## Stack
 
@@ -8,13 +8,15 @@ A React + Tailwind hotel management platform for guest self-service and hotel st
 - Vite
 - React Router
 - Tailwind CSS
+- PHP
+- MySQL
 
 ## Core Deliverables
 
 - Premium light-mode SaaS app shell with sidebar, top bar, and responsive layout
 - Guest portal for booking, amenities, stay history, and check-in/check-out
 - Staff tools for dashboard, reservations, guests, rooms, housekeeping, maintenance, inventory, reports, and settings
-- Shared mock data layer with local UI state updates
+- LocalStorage-backed demo data while the SQL database is being prepared
 - Reusable UI components for panels, tables, badges, KPI blocks, forms, and empty states
 
 ## Demo Roles
@@ -36,13 +38,9 @@ Use the landing page to sign in as:
 - `/app/check-in`
 
 ### Staff
-- `/app/dashboard`
-- `/app/reservations`
-- `/app/guests`
-- `/app/rooms`
-- `/app/housekeeping`
-- `/app/maintenance`
-- `/app/inventory`
+- `/app/overview`
+- `/app/front-desk`
+- `/app/operations`
 - `/app/reports`
 - `/app/settings`
 
@@ -115,6 +113,31 @@ npm install
 npm run dev
 ```
 
+The local app runs at the Vite URL shown in your terminal, usually:
+
+```text
+http://localhost:5173
+```
+
+Bookings, status updates, notes, and inventory changes are saved in your browser localStorage. To reset the demo data, clear site data for localhost in your browser.
+
+## Hostinger + MySQL Setup
+
+The repo includes files for a later Hostinger deployment path:
+
+- React builds to static files.
+- Grouped PHP files in `public/api/` act as the backend.
+- MySQL stores hotel data.
+
+See `HOSTINGER_SETUP.md` when you are ready to connect MySQL.
+
+## How The App Works
+
+1. React shows the hotel screens in the browser.
+2. For now, React saves demo changes in browser localStorage.
+3. Later, React can call PHP files in `public/api/`.
+4. PHP will read from and write to MySQL.
+
 ## Production Build
 
 ```bash
@@ -132,6 +155,6 @@ npm run build
 
 ## Notes
 
-- This is a frontend MVP only.
-- There is no real backend, payment gateway, production authentication, or external integration.
-- State changes are local to the running app and powered by seeded mock data.
+- This is still an MVP, not a production hotel system.
+- There is no payment gateway, production authentication, or external integration.
+- Local development uses localStorage until the SQL step is connected.

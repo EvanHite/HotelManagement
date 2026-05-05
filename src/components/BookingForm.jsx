@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Panel } from "./Panel";
+import { Panel } from "./ui";
 
 export function BookingForm({
   guests,
@@ -17,6 +17,7 @@ export function BookingForm({
   const [checkIn, setCheckIn] = useState("2026-04-18");
   const [checkOut, setCheckOut] = useState("2026-04-20");
   const [adults, setAdults] = useState(2);
+  const [paymentOption, setPaymentOption] = useState(currentGuest ? "card-on-file" : "pay-later");
   const [notes, setNotes] = useState("");
   const [feedback, setFeedback] = useState("");
 
@@ -32,7 +33,7 @@ export function BookingForm({
     }
   }, [roomId, rooms]);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     if (!guestId || !roomId || !checkIn || !checkOut) {
@@ -40,14 +41,22 @@ export function BookingForm({
       return;
     }
 
-    const result = onSubmit({
-      guestId,
-      roomId,
-      checkIn,
-      checkOut,
-      adults: Number(adults),
-      notes,
-    });
+    let result = null;
+
+    try {
+      result = await onSubmit({
+        guestId,
+        roomId,
+        checkIn,
+        checkOut,
+        adults: Number(adults),
+        notes,
+        paymentOption,
+      });
+    } catch (error) {
+      setFeedback("Reservation could not be created.");
+      return;
+    }
 
     if (!result) {
       setFeedback("Reservation could not be created.");
@@ -127,6 +136,19 @@ export function BookingForm({
           />
         </label>
       </div>
+
+      <label>
+        <span className="field-label">Payment option</span>
+        <select
+          className="input-base"
+          value={paymentOption}
+          onChange={(event) => setPaymentOption(event.target.value)}
+        >
+          <option value="pay-later">Pay later</option>
+          <option value="card-on-file">Card on file</option>
+          <option value="prepaid">Prepaid</option>
+        </select>
+      </label>
 
       <label>
         <span className="field-label">Notes</span>

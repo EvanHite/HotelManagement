@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Panel } from "../components/Panel";
-import { SectionHeading } from "../components/SectionHeading";
+import { Panel } from "../components/ui";
+import { SectionHeading } from "../components/ui";
 
 export function SettingsPage() {
   const [hotelName, setHotelName] = useState("Harbor House Milledgeville");
@@ -14,13 +14,10 @@ export function SettingsPage() {
 
   return (
     <>
-      <SectionHeading
-        title="Settings"
-        description="Hotel profile, operating defaults, notifications, and role configuration."
-      />
+      <SectionHeading title="Settings" />
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <Panel title="Hotel profile" description="Property-facing information shown across the platform.">
+        <Panel title="Hotel profile">
           <div className="grid gap-4">
             <label>
               <span className="field-label">Hotel name</span>
@@ -41,7 +38,7 @@ export function SettingsPage() {
           </div>
         </Panel>
 
-        <Panel title="Stay defaults" description="Working defaults for guest arrival and departure.">
+        <Panel title="Stay defaults">
           <div className="grid gap-4 sm:grid-cols-3">
             <label>
               <span className="field-label">Check-in</span>
@@ -73,7 +70,7 @@ export function SettingsPage() {
           </div>
         </Panel>
 
-        <Panel title="Notification preferences" description="Operational alerts routed to staff and management.">
+        <Panel title="Notification preferences">
           <div className="space-y-3">
             <label className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-4 py-3">
               <span className="text-sm text-slate-700">Arrival and departure alerts</span>
@@ -90,7 +87,7 @@ export function SettingsPage() {
           </div>
         </Panel>
 
-        <Panel title="Role access" description="Current role coverage in this frontend MVP.">
+        <Panel title="Role access">
           <div className="divide-y divide-slate-200 text-sm">
             <div className="grid grid-cols-[180px_minmax(0,1fr)] gap-4 py-3">
               <p className="font-medium text-slate-900">Reception</p>

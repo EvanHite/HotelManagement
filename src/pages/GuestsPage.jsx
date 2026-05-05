@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { DataTable } from "../components/DataTable";
-import { Panel } from "../components/Panel";
-import { SectionHeading } from "../components/SectionHeading";
-import { StatusBadge } from "../components/StatusBadge";
+import { Panel } from "../components/ui";
+import { SearchInput } from "../components/ui";
+import { SectionHeading } from "../components/ui";
+import { StatusBadge } from "../components/ui";
 import { useHotelApp } from "../context/HotelAppContext";
 import { formatDateRange, matchesSearch } from "../utils/formatters";
 
-export function GuestsPage() {
+export function GuestsSection({ showHeading = true } = {}) {
   const { guestProfiles, reservations, searchQuery } = useHotelApp();
   const [localSearch, setLocalSearch] = useState("");
   const [selectedGuestId, setSelectedGuestId] = useState(guestProfiles[0]?.id ?? "");
@@ -44,11 +45,11 @@ export function GuestsPage() {
 
   return (
     <>
-      <SectionHeading title="Guests" />
+      {showHeading && <SectionHeading title="Guests" />}
 
       <div className="flex justify-end">
-        <input
-          className="input-base min-w-[280px]"
+        <SearchInput
+          className="w-full sm:w-[320px]"
           value={localSearch}
           onChange={(event) => setLocalSearch(event.target.value)}
           placeholder="Search guest, company, or email"
@@ -123,7 +124,7 @@ export function GuestsPage() {
               </div>
             </Panel>
 
-            <Panel title="Stay history" description="Completed and upcoming reservations for this guest.">
+            <Panel title="Stay history">
               <div className="space-y-3">
                 {stayHistory.map((reservation) => (
                   <div key={reservation.id} className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">

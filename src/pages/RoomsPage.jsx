@@ -1,59 +1,137 @@
 import { useMemo, useState } from "react";
 import { DataTable } from "../components/DataTable";
-import { FilterTabs } from "../components/FilterTabs";
-import { Panel } from "../components/Panel";
-import { SectionHeading } from "../components/SectionHeading";
-import { StatusBadge } from "../components/StatusBadge";
+import { FilterTabs } from "../components/ui";
+import { Panel } from "../components/ui";
+import { SectionHeading } from "../components/ui";
+import { StatusBadge } from "../components/ui";
 import { useHotelApp } from "../context/HotelAppContext";
 import { formatDateRange, formatMoney, matchesSearch } from "../utils/formatters";
 
 const statusOptions = [
   { label: "All", value: "all" },
   { label: "Available", value: "available" },
-  { label: "Occupied", value: "occupied" },
+  { label: "Booked", value: "booked" },
   { label: "Cleaning", value: "cleaning" },
   { label: "Out of Service", value: "maintenance" },
 ];
 
-export function RoomsPage() {
-  const { roomTypeOptions, roomViews, searchQuery } = useHotelApp();
+function addDays(dateValue, days) {
+  const date = new Date(`${dateValue}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function datesOverlap(firstStart, firstEnd, secondStart, secondEnd) {
+  return firstStart < secondEnd && firstEnd > secondStart;
+}
+
+function getRoomAvailability(room, reservations, checkIn, checkOut) {
+  if (room.displayStatus === "maintenance") {
+    return {
+      availability: "maintenance",
+      matchingReservation: null,
+    };
+  }
+
+  const matchingReservation = reservations.find(
+    (reservation) =>
+      reservation.roomId === room.id &&
+      ["pending", "confirmed", "checked-in"].includes(reservation.status) &&
+      datesOverlap(checkIn, checkOut, reservation.checkIn, reservation.checkOut),
+  );
+
+  return {
+    availability: matchingReservation ? "booked" : "available",
+    matchingReservation,
+  };
+}
+
+export function RoomsSection({ showHeading = true } = {}) {
+  const { businessDate, reservations, roomTypeOptions, roomViews, searchQuery } = useHotelApp();
   const [statusFilter, setStatusFilter] = useState("all");
   const [roomTypeFilter, setRoomTypeFilter] = useState("all");
+  const [checkIn, setCheckIn] = useState(businessDate);
+  const [checkOut, setCheckOut] = useState(addDays(businessDate, 2));
   const [selectedRoomId, setSelectedRoomId] = useState(roomViews[0]?.id ?? "");
+
+  const roomRows = useMemo(
+    () =>
+      roomViews.map((room) => {
+        const { availability, matchingReservation } = getRoomAvailability(
+          room,
+          reservations,
+          checkIn,
+          checkOut,
+        );
+
+        return {
+          ...room,
+          dateAvailability: availability,
+          matchingReservation,
+        };
+      }),
+    [checkIn, checkOut, reservations, roomViews],
+  );
 
   const filteredRooms = useMemo(
     () =>
-      roomViews.filter((room) => {
+      roomRows.filter((room) => {
         const matchesStatus =
-          statusFilter === "all" ? true : room.displayStatus === statusFilter;
+          statusFilter === "all"
+            ? true
+            : statusFilter === "cleaning"
+              ? room.displayStatus === "cleaning"
+              : room.dateAvailability === statusFilter;
         const matchesRoomType =
           roomTypeFilter === "all" ? true : room.type === roomTypeFilter;
         const matchesTerm = matchesSearch(
-          `${room.number} ${room.type} ${room.displayStatus} ${room.notes}`,
+          `${room.number} ${room.type} ${room.displayStatus} ${room.dateAvailability} ${room.notes}`,
           searchQuery,
         );
         return matchesStatus && matchesRoomType && matchesTerm;
       }),
-    [roomTypeFilter, roomViews, searchQuery, statusFilter],
+    [roomRows, roomTypeFilter, searchQuery, statusFilter],
   );
 
   const selectedRoom =
     filteredRooms.find((room) => room.id === selectedRoomId) ??
-    roomViews.find((room) => room.id === selectedRoomId) ??
+    roomRows.find((room) => room.id === selectedRoomId) ??
     filteredRooms[0] ??
     null;
 
+  function handleCheckInChange(nextCheckIn) {
+    setCheckIn(nextCheckIn);
+
+    if (checkOut <= nextCheckIn) {
+      setCheckOut(addDays(nextCheckIn, 1));
+    }
+  }
+
   return (
     <>
-      <SectionHeading
-        title="Rooms"
-        description="Room inventory, readiness state, and active occupancy context."
-      />
+      {showHeading && <SectionHeading title="Rooms" />}
 
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <FilterTabs options={statusOptions} value={statusFilter} onChange={setStatusFilter} />
+      <div className="grid gap-3 xl:grid-cols-[max-content_150px_150px_220px] xl:items-center">
+        <FilterTabs
+          options={statusOptions}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
+        <input
+          className="input-base"
+          type="date"
+          value={checkIn}
+          onChange={(event) => handleCheckInChange(event.target.value)}
+        />
+        <input
+          className="input-base"
+          type="date"
+          min={checkIn}
+          value={checkOut}
+          onChange={(event) => setCheckOut(event.target.value)}
+        />
         <select
-          className="input-base min-w-[200px]"
+          className="input-base"
           value={roomTypeFilter}
           onChange={(event) => setRoomTypeFilter(event.target.value)}
         >
@@ -67,21 +145,33 @@ export function RoomsPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_380px]">
-        <Panel title="Room inventory" description="Select a room to review active context and readiness.">
+        <Panel title="Room inventory">
           <DataTable
             columns={[
               { key: "number", header: "Room", render: (row) => `Room ${row.number}` },
               { key: "type", header: "Type" },
-              { key: "readiness", header: "Readiness", render: (row) => <StatusBadge value={row.readiness} /> },
               {
-                key: "displayStatus",
-                header: "Status",
-                render: (row) => <StatusBadge value={row.displayStatus} />,
+                key: "dateAvailability",
+                header: "Availability",
+                render: (row) => (
+                  <StatusBadge
+                    value={
+                      row.dateAvailability === "maintenance"
+                        ? "Out of service"
+                        : row.dateAvailability
+                    }
+                  />
+                ),
               },
               {
-                key: "currentGuestName",
-                header: "Current guest",
-                render: (row) => row.currentGuestName ?? "Vacant",
+                key: "matchingReservation",
+                header: "Stay guest",
+                render: (row) => row.matchingReservation?.guestName ?? "Open",
+              },
+              {
+                key: "displayStatus",
+                header: "Current status",
+                render: (row) => <StatusBadge value={row.displayStatus} />,
               },
               {
                 key: "rate",
@@ -101,7 +191,25 @@ export function RoomsPage() {
             <div className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs font-medium text-slate-500">Status</p>
+                  <p className="text-xs font-medium text-slate-500">Availability</p>
+                  <div className="mt-1">
+                    <StatusBadge
+                      value={
+                        selectedRoom.dateAvailability === "maintenance"
+                          ? "Out of service"
+                          : selectedRoom.dateAvailability
+                      }
+                    />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Selected dates</p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    {formatDateRange(checkIn, checkOut)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Current status</p>
                   <div className="mt-1">
                     <StatusBadge value={selectedRoom.displayStatus} />
                   </div>
@@ -120,7 +228,7 @@ export function RoomsPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-slate-500">Current guest</p>
+                <p className="text-xs font-medium text-slate-500">Current guest today</p>
                 <p className="mt-1 text-sm text-slate-700">
                   {selectedRoom.currentGuestName ?? "No active guest"}
                 </p>
@@ -134,14 +242,14 @@ export function RoomsPage() {
                 <p className="mt-1 text-sm text-slate-700">{selectedRoom.maintenanceState}</p>
               </div>
               <div>
-                <p className="text-xs font-medium text-slate-500">Reservation context</p>
+                <p className="text-xs font-medium text-slate-500">Booking in selected dates</p>
                 <p className="mt-1 text-sm text-slate-700">
-                  {selectedRoom.activeReservation
+                  {selectedRoom.matchingReservation
                     ? formatDateRange(
-                        selectedRoom.activeReservation.checkIn,
-                        selectedRoom.activeReservation.checkOut,
+                        selectedRoom.matchingReservation.checkIn,
+                        selectedRoom.matchingReservation.checkOut,
                       )
-                    : "No active reservation"}
+                    : "No booking in this date range"}
                 </p>
               </div>
               <div>

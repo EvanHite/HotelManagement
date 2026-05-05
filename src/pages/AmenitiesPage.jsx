@@ -1,5 +1,5 @@
-import { Panel } from "../components/Panel";
-import { SectionHeading } from "../components/SectionHeading";
+import { Panel } from "../components/ui";
+import { SectionHeading } from "../components/ui";
 import { amenities } from "../data/mockData";
 
 export function AmenitiesPage() {
@@ -8,13 +8,10 @@ export function AmenitiesPage() {
 
   return (
     <>
-      <SectionHeading
-        title="Amenities"
-        description="Service information available during the guest stay."
-      />
+      <SectionHeading title="Amenities" />
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <Panel title="Included" description="Amenities available as part of the stay.">
+        <Panel title="Included">
           <div className="divide-y divide-slate-200">
             {included.map((item) => (
               <div key={item.name} className="py-4 first:pt-0 last:pb-0">
@@ -25,7 +22,7 @@ export function AmenitiesPage() {
           </div>
         </Panel>
 
-        <Panel title="Requestable services" description="Services coordinated through the property staff.">
+        <Panel title="Requestable services">
           <div className="divide-y divide-slate-200">
             {requestable.map((item) => (
               <div key={item.name} className="py-4 first:pt-0 last:pb-0">

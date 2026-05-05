@@ -1,4 +1,4 @@
-import { EmptyState } from "./EmptyState";
+import { EmptyState } from "./ui";
 
 export function DataTable({
   columns,

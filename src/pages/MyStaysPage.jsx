@@ -1,32 +1,29 @@
 import { DataTable } from "../components/DataTable";
-import { KpiCard } from "../components/KpiCard";
-import { Panel } from "../components/Panel";
-import { SectionHeading } from "../components/SectionHeading";
-import { StatusBadge } from "../components/StatusBadge";
+import { KpiCard } from "../components/ui";
+import { Panel } from "../components/ui";
+import { SectionHeading } from "../components/ui";
+import { StatusBadge } from "../components/ui";
 import { useHotelApp } from "../context/HotelAppContext";
 import { formatDateRange, formatMoney } from "../utils/formatters";
 
 export function MyStaysPage() {
-  const { currentGuest, guestReservations } = useHotelApp();
+  const { currentGuest, guestReservations, updateReservationStatus } = useHotelApp();
   const activeStays = guestReservations.filter((reservation) =>
     ["confirmed", "checked-in"].includes(reservation.status),
   );
 
   return (
     <>
-      <SectionHeading
-        title="Stay History"
-        description="Current reservations, completed stays, and guest profile information."
-      />
+      <SectionHeading title="Stay History" />
 
       <div className="grid gap-4 md:grid-cols-3">
         <KpiCard label="Loyalty Tier" value={currentGuest?.loyaltyTier ?? "-"} detail="Current guest status" />
         <KpiCard label="Active Stays" value={activeStays.length} detail="Confirmed or checked in" />
-        <KpiCard label="Stay Count" value={guestReservations.length} detail="Visible reservations" />
+        <KpiCard label="Stay Count" value={guestReservations.length} detail="Total reservations" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_340px]">
-        <Panel title="Reservation history" description="Guest-facing record of past and upcoming stays.">
+        <Panel title="Reservation history">
           <DataTable
             columns={[
               { key: "id", header: "Booking ID" },
@@ -39,6 +36,26 @@ export function MyStaysPage() {
               },
               { key: "status", header: "Status", render: (row) => <StatusBadge value={row.status} /> },
               { key: "total", header: "Total", render: (row) => formatMoney(row.total) },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (row) =>
+                  row.status === "confirmed" ? (
+                    <button
+                      className="btn-ghost h-8 px-2 text-xs"
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm("Cancel this reservation?")) {
+                          updateReservationStatus(row.id, "cancelled");
+                        }
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  ) : (
+                    "-"
+                  ),
+              },
             ]}
             rows={guestReservations}
             emptyTitle="No reservations"
@@ -46,7 +63,7 @@ export function MyStaysPage() {
           />
         </Panel>
 
-        <Panel title="Profile" description="Guest preferences and contact details.">
+        <Panel title="Profile">
           <div className="space-y-4">
             <div>
               <p className="text-xs font-medium text-slate-500">Email</p>
