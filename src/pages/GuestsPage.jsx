@@ -8,9 +8,20 @@ import { useHotelApp } from "../context/HotelAppContext";
 import { formatDateRange, matchesSearch } from "../utils/formatters";
 
 export function GuestsSection({ showHeading = true } = {}) {
-  const { guestProfiles, reservations, searchQuery } = useHotelApp();
+  const { createGuest, guestProfiles, reservations, searchQuery, updateGuest } = useHotelApp();
   const [localSearch, setLocalSearch] = useState("");
   const [selectedGuestId, setSelectedGuestId] = useState(guestProfiles[0]?.id ?? "");
+  const [isEditingGuest, setIsEditingGuest] = useState(false);
+  const [isNewGuest, setIsNewGuest] = useState(false);
+  const [guestDraft, setGuestDraft] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    loyaltyTier: "Standard",
+    company: "",
+    notes: "",
+  });
+  const [guestFeedback, setGuestFeedback] = useState("");
 
   const guestRows = useMemo(
     () =>
@@ -43,11 +54,74 @@ export function GuestsSection({ showHeading = true } = {}) {
     null;
   const stayHistory = reservations.filter((reservation) => reservation.guestId === selectedGuest?.id);
 
+  function startNewGuest() {
+    setGuestDraft({
+      name: "",
+      email: "",
+      phone: "",
+      loyaltyTier: "Standard",
+      company: "",
+      notes: "",
+    });
+    setIsEditingGuest(true);
+    setIsNewGuest(true);
+    setGuestFeedback("");
+  }
+
+  function startEditGuest() {
+    setGuestDraft({
+      name: selectedGuest.name,
+      email: selectedGuest.email,
+      phone: selectedGuest.phone,
+      loyaltyTier: selectedGuest.loyaltyTier,
+      company: selectedGuest.company,
+      notes: selectedGuest.notes,
+    });
+    setIsEditingGuest(true);
+    setIsNewGuest(false);
+    setGuestFeedback("");
+  }
+
+  function updateGuestDraft(field, value) {
+    setGuestDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function saveGuest() {
+    if (!guestDraft.name.trim()) {
+      setGuestFeedback("Guest name is required.");
+      return;
+    }
+
+    if (!isNewGuest && selectedGuest) {
+      updateGuest(selectedGuest.id, guestDraft);
+      setGuestFeedback("Guest updated.");
+      setIsEditingGuest(false);
+      return;
+    }
+
+    const createdGuest = createGuest(guestDraft);
+
+    if (!createdGuest) {
+      setGuestFeedback("Guest could not be saved.");
+      return;
+    }
+
+    setSelectedGuestId(createdGuest.id);
+    setGuestFeedback("Guest added.");
+    setIsEditingGuest(false);
+  }
+
   return (
     <>
       {showHeading && <SectionHeading title="Guests" />}
 
-      <div className="flex justify-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button className="btn-primary w-full sm:w-auto" type="button" onClick={startNewGuest}>
+          Add guest
+        </button>
         <SearchInput
           className="w-full sm:w-[320px]"
           value={localSearch}
@@ -105,23 +179,101 @@ export function GuestsSection({ showHeading = true } = {}) {
         {selectedGuest && (
           <div className="space-y-6">
             <Panel title={selectedGuest.name} description={selectedGuest.company}>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs font-medium text-slate-500">Contact</p>
-                  <p className="mt-1 text-sm font-medium text-slate-900">{selectedGuest.email}</p>
-                  <p className="text-sm text-slate-600">{selectedGuest.phone}</p>
+              {!isEditingGuest ? (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">Contact</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">{selectedGuest.email}</p>
+                    <p className="text-sm text-slate-600">{selectedGuest.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">Loyalty</p>
+                    <div className="mt-1">
+                      <StatusBadge value={selectedGuest.loyaltyTier} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-slate-500">Preferences</p>
+                    <p className="mt-1 text-sm text-slate-600">{selectedGuest.notes}</p>
+                  </div>
+                  <button className="btn-secondary" type="button" onClick={startEditGuest}>
+                    Edit guest
+                  </button>
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-slate-500">Loyalty</p>
-                  <div className="mt-1">
-                    <StatusBadge value={selectedGuest.loyaltyTier} />
+              ) : (
+                <div className="space-y-3">
+                  <label>
+                    <span className="field-label">Name</span>
+                    <input
+                      className="input-base"
+                      value={guestDraft.name}
+                      onChange={(event) => updateGuestDraft("name", event.target.value)}
+                    />
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label>
+                      <span className="field-label">Email</span>
+                      <input
+                        className="input-base"
+                        value={guestDraft.email}
+                        onChange={(event) => updateGuestDraft("email", event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span className="field-label">Phone</span>
+                      <input
+                        className="input-base"
+                        value={guestDraft.phone}
+                        onChange={(event) => updateGuestDraft("phone", event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label>
+                      <span className="field-label">Tier</span>
+                      <select
+                        className="input-base"
+                        value={guestDraft.loyaltyTier}
+                        onChange={(event) => updateGuestDraft("loyaltyTier", event.target.value)}
+                      >
+                        <option>Standard</option>
+                        <option>Silver</option>
+                        <option>Gold</option>
+                        <option>Platinum</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span className="field-label">Company</span>
+                      <input
+                        className="input-base"
+                        value={guestDraft.company}
+                        onChange={(event) => updateGuestDraft("company", event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    <span className="field-label">Notes</span>
+                    <textarea
+                      className="textarea-base min-h-24 resize-none"
+                      value={guestDraft.notes}
+                      onChange={(event) => updateGuestDraft("notes", event.target.value)}
+                    />
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button className="btn-primary" type="button" onClick={saveGuest}>
+                      Save guest
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      type="button"
+                      onClick={() => setIsEditingGuest(false)}
+                    >
+                      Cancel
+                    </button>
+                    {guestFeedback && <p className="text-sm text-slate-500">{guestFeedback}</p>}
                   </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-slate-500">Preferences</p>
-                  <p className="mt-1 text-sm text-slate-600">{selectedGuest.notes}</p>
-                </div>
-              </div>
+              )}
             </Panel>
 
             <Panel title="Stay history">

@@ -14,6 +14,7 @@ const badgeStyles = {
   "checked-in": "border-emerald-200 bg-emerald-50 text-emerald-700",
   "checked-out": "border-slate-300 bg-slate-100 text-slate-700",
   cancelled: "border-rose-200 bg-rose-50 text-rose-700",
+  "no-show": "border-rose-200 bg-rose-50 text-rose-700",
   authorized: "border-sky-200 bg-sky-50 text-sky-700",
   captured: "border-emerald-200 bg-emerald-50 text-emerald-700",
   prepaid: "border-emerald-200 bg-emerald-50 text-emerald-700",

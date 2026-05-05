@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Panel } from "./ui";
+import { useHotelApp } from "../context/HotelAppContext";
 
 export function BookingForm({
   guests,
@@ -11,7 +12,9 @@ export function BookingForm({
   description = "Create a reservation using the current room inventory.",
   submitLabel = "Create reservation",
   showPanel = true,
+  onAvailabilityChange,
 }) {
+  const { getAvailableRooms, getBookingError } = useHotelApp();
   const [guestId, setGuestId] = useState(currentGuest?.id ?? guests[0]?.id ?? "");
   const [roomId, setRoomId] = useState(rooms[0]?.id ?? "");
   const [checkIn, setCheckIn] = useState("2026-04-18");
@@ -20,6 +23,7 @@ export function BookingForm({
   const [paymentOption, setPaymentOption] = useState(currentGuest ? "card-on-file" : "pay-later");
   const [notes, setNotes] = useState("");
   const [feedback, setFeedback] = useState("");
+  const lastAvailabilityKey = useRef("");
 
   useEffect(() => {
     if (currentGuest?.id) {
@@ -27,17 +31,61 @@ export function BookingForm({
     }
   }, [currentGuest]);
 
+  const availableRooms = useMemo(
+    () =>
+      getAvailableRooms(checkIn, checkOut, adults).filter((room) =>
+        rooms.some((entry) => entry.id === room.id),
+      ),
+    [adults, checkIn, checkOut, getAvailableRooms, rooms],
+  );
+  const roomOptions = availableRooms;
+
   useEffect(() => {
-    if (rooms.length && !rooms.some((room) => room.id === roomId)) {
-      setRoomId(rooms[0].id);
+    const availabilityKey = `${checkIn}|${checkOut}|${adults}|${availableRooms
+      .map((room) => room.id)
+      .join(",")}`;
+
+    if (availabilityKey === lastAvailabilityKey.current) {
+      return;
     }
-  }, [roomId, rooms]);
+
+    lastAvailabilityKey.current = availabilityKey;
+    onAvailabilityChange?.({
+      checkIn,
+      checkOut,
+      adults,
+      rooms: availableRooms,
+    });
+  }, [adults, availableRooms, checkIn, checkOut, onAvailabilityChange]);
+
+  useEffect(() => {
+    if (roomOptions.length && !roomOptions.some((room) => room.id === roomId)) {
+      setRoomId(roomOptions[0].id);
+    }
+  }, [roomId, roomOptions]);
+
+  function handleCheckInChange(value) {
+    setCheckIn(value);
+
+    if (checkOut <= value) {
+      const nextDate = new Date(`${value}T12:00:00`);
+      nextDate.setDate(nextDate.getDate() + 1);
+      setCheckOut(nextDate.toISOString().slice(0, 10));
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
 
     if (!guestId || !roomId || !checkIn || !checkOut) {
       setFeedback("Complete the required reservation fields.");
+      return;
+    }
+
+    const bookingError = getBookingError({ roomId, checkIn, checkOut, adults });
+
+    if (bookingError) {
+      setFeedback(bookingError);
       return;
     }
 
@@ -94,12 +142,17 @@ export function BookingForm({
             value={roomId}
             onChange={(event) => setRoomId(event.target.value)}
           >
-            {rooms.map((room) => (
+            {roomOptions.map((room) => (
               <option key={room.id} value={room.id}>
-                Room {room.number} - {room.type}
+                Room {room.number} - {room.type} / {room.capacity} guests
               </option>
             ))}
           </select>
+          {!availableRooms.length && (
+            <p className="mt-2 text-xs text-amber-700">
+              No rooms are open for the selected dates and guest count.
+            </p>
+          )}
         </label>
       </div>
 
@@ -110,7 +163,7 @@ export function BookingForm({
             className="input-base"
             type="date"
             value={checkIn}
-            onChange={(event) => setCheckIn(event.target.value)}
+            onChange={(event) => handleCheckInChange(event.target.value)}
           />
         </label>
 
@@ -119,6 +172,7 @@ export function BookingForm({
           <input
             className="input-base"
             type="date"
+            min={checkIn}
             value={checkOut}
             onChange={(event) => setCheckOut(event.target.value)}
           />

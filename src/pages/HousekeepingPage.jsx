@@ -185,6 +185,7 @@ export function HousekeepingSection({ showHeading = true } = {}) {
               },
             ]}
             rows={filteredTasks}
+            rowClassName={(row) => (row.status === "completed" ? "opacity-60" : "")}
             onRowClick={(row) => setSelectedTaskId(row.id)}
             emptyTitle="No housekeeping tasks"
             emptyDescription="No tasks match the current filter."

@@ -36,7 +36,7 @@ export function GuestSignInPage() {
             <p className="text-sm font-semibold text-slate-950">Guest Access</p>
             <p className="text-sm text-slate-500">Booking and check-in</p>
           </div>
-          <Link className="btn-secondary" to="/">
+          <Link className="btn-secondary" to="/staff/sign-in">
             Staff portal
           </Link>
         </div>

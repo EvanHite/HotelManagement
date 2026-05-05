@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "../components/DataTable";
 import { Panel } from "../components/ui";
 import { SectionHeading } from "../components/ui";
@@ -7,9 +7,18 @@ import { useHotelApp } from "../context/HotelAppContext";
 import { matchesSearch } from "../utils/formatters";
 
 export function InventorySection({ showHeading = true } = {}) {
-  const { inventoryAlerts, inventoryItems, restockInventoryItem, searchQuery } = useHotelApp();
+  const {
+    inventoryAlerts,
+    inventoryItems,
+    restockInventoryItem,
+    searchQuery,
+    updateInventoryItem,
+  } = useHotelApp();
   const categories = ["all", ...Array.from(new Set(inventoryItems.map((item) => item.category)))];
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [selectedItemId, setSelectedItemId] = useState(inventoryItems[0]?.id ?? "");
+  const [stockDraft, setStockDraft] = useState("");
+  const [reorderDraft, setReorderDraft] = useState("");
 
   const filteredRows = useMemo(
     () =>
@@ -24,6 +33,32 @@ export function InventorySection({ showHeading = true } = {}) {
       }),
     [categoryFilter, inventoryItems, searchQuery],
   );
+  const selectedItem =
+    inventoryItems.find((item) => item.id === selectedItemId) ?? filteredRows[0] ?? null;
+
+  useEffect(() => {
+    if (selectedItem) {
+      setStockDraft(String(selectedItem.stock));
+      setReorderDraft(String(selectedItem.reorderLevel));
+    }
+  }, [selectedItem]);
+
+  function selectInventoryItem(item) {
+    setSelectedItemId(item.id);
+    setStockDraft(String(item.stock));
+    setReorderDraft(String(item.reorderLevel));
+  }
+
+  function saveInventoryItem() {
+    if (!selectedItem) {
+      return;
+    }
+
+    updateInventoryItem(selectedItem.id, {
+      stock: Number(stockDraft || selectedItem.stock),
+      reorderLevel: Number(reorderDraft || selectedItem.reorderLevel),
+    });
+  }
 
   return (
     <>
@@ -105,6 +140,7 @@ export function InventorySection({ showHeading = true } = {}) {
               },
             ]}
             rows={filteredRows}
+            onRowClick={selectInventoryItem}
             emptyTitle="No inventory items"
             emptyDescription="No stock items match the active filters."
           />
@@ -134,6 +170,38 @@ export function InventorySection({ showHeading = true } = {}) {
             </p>
             <p className="mt-1 text-sm text-slate-500">items below threshold</p>
           </Panel>
+
+          {selectedItem && (
+            <Panel title="Edit stock" description={selectedItem.name}>
+              <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label>
+                    <span className="field-label">Stock</span>
+                    <input
+                      className="input-base"
+                      type="number"
+                      min="0"
+                      value={stockDraft}
+                      onChange={(event) => setStockDraft(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span className="field-label">Reorder level</span>
+                    <input
+                      className="input-base"
+                      type="number"
+                      min="0"
+                      value={reorderDraft}
+                      onChange={(event) => setReorderDraft(event.target.value)}
+                    />
+                  </label>
+                </div>
+                <button className="btn-secondary" type="button" onClick={saveInventoryItem}>
+                  Save stock
+                </button>
+              </div>
+            </Panel>
+          )}
         </div>
       </div>
     </>

@@ -1,20 +1,24 @@
-import { useState } from "react";
 import { Panel } from "../components/ui";
 import { SectionHeading } from "../components/ui";
+import { useHotelApp } from "../context/HotelAppContext";
 
 export function SettingsPage() {
-  const [hotelName, setHotelName] = useState("Harbor House Milledgeville");
-  const [contactEmail, setContactEmail] = useState("ops@harborhouse.example");
-  const [checkInTime, setCheckInTime] = useState("15:00");
-  const [checkOutTime, setCheckOutTime] = useState("11:00");
-  const [quietHours, setQuietHours] = useState("22:00");
-  const [arrivalAlerts, setArrivalAlerts] = useState(true);
-  const [inventoryAlerts, setInventoryAlerts] = useState(true);
-  const [maintenanceAlerts, setMaintenanceAlerts] = useState(true);
+  const { resetDemoData, settings, updateSettings } = useHotelApp();
+
+  function changeSetting(field, value) {
+    updateSettings({ [field]: value });
+  }
 
   return (
     <>
-      <SectionHeading title="Settings" />
+      <SectionHeading
+        title="Settings"
+        actions={
+          <button className="btn-danger" type="button" onClick={resetDemoData}>
+            Reset demo data
+          </button>
+        }
+      />
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Panel title="Hotel profile">
@@ -23,16 +27,16 @@ export function SettingsPage() {
               <span className="field-label">Hotel name</span>
               <input
                 className="input-base"
-                value={hotelName}
-                onChange={(event) => setHotelName(event.target.value)}
+                value={settings.hotelName}
+                onChange={(event) => changeSetting("hotelName", event.target.value)}
               />
             </label>
             <label>
               <span className="field-label">Operations email</span>
               <input
                 className="input-base"
-                value={contactEmail}
-                onChange={(event) => setContactEmail(event.target.value)}
+                value={settings.contactEmail}
+                onChange={(event) => changeSetting("contactEmail", event.target.value)}
               />
             </label>
           </div>
@@ -45,8 +49,8 @@ export function SettingsPage() {
               <input
                 className="input-base"
                 type="time"
-                value={checkInTime}
-                onChange={(event) => setCheckInTime(event.target.value)}
+                value={settings.checkInTime}
+                onChange={(event) => changeSetting("checkInTime", event.target.value)}
               />
             </label>
             <label>
@@ -54,8 +58,8 @@ export function SettingsPage() {
               <input
                 className="input-base"
                 type="time"
-                value={checkOutTime}
-                onChange={(event) => setCheckOutTime(event.target.value)}
+                value={settings.checkOutTime}
+                onChange={(event) => changeSetting("checkOutTime", event.target.value)}
               />
             </label>
             <label>
@@ -63,8 +67,8 @@ export function SettingsPage() {
               <input
                 className="input-base"
                 type="time"
-                value={quietHours}
-                onChange={(event) => setQuietHours(event.target.value)}
+                value={settings.quietHours}
+                onChange={(event) => changeSetting("quietHours", event.target.value)}
               />
             </label>
           </div>
@@ -74,15 +78,27 @@ export function SettingsPage() {
           <div className="space-y-3">
             <label className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-4 py-3">
               <span className="text-sm text-slate-700">Arrival and departure alerts</span>
-              <input type="checkbox" checked={arrivalAlerts} onChange={() => setArrivalAlerts((value) => !value)} />
+              <input
+                type="checkbox"
+                checked={settings.arrivalAlerts}
+                onChange={() => changeSetting("arrivalAlerts", !settings.arrivalAlerts)}
+              />
             </label>
             <label className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-4 py-3">
               <span className="text-sm text-slate-700">Inventory threshold alerts</span>
-              <input type="checkbox" checked={inventoryAlerts} onChange={() => setInventoryAlerts((value) => !value)} />
+              <input
+                type="checkbox"
+                checked={settings.inventoryAlerts}
+                onChange={() => changeSetting("inventoryAlerts", !settings.inventoryAlerts)}
+              />
             </label>
             <label className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-4 py-3">
               <span className="text-sm text-slate-700">Maintenance issue alerts</span>
-              <input type="checkbox" checked={maintenanceAlerts} onChange={() => setMaintenanceAlerts((value) => !value)} />
+              <input
+                type="checkbox"
+                checked={settings.maintenanceAlerts}
+                onChange={() => changeSetting("maintenanceAlerts", !settings.maintenanceAlerts)}
+              />
             </label>
           </div>
         </Panel>

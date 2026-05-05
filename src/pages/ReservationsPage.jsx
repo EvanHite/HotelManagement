@@ -13,6 +13,7 @@ import {
   formatMoney,
   matchesDateFilter,
   matchesSearch,
+  nightsBetween,
 } from "../utils/formatters";
 
 const statusOptions = [
@@ -21,6 +22,8 @@ const statusOptions = [
   { label: "Confirmed", value: "confirmed" },
   { label: "Checked In", value: "checked-in" },
   { label: "Checked Out", value: "checked-out" },
+  { label: "No-show", value: "no-show" },
+  { label: "Cancelled", value: "cancelled" },
 ];
 
 const reservationDetailTabs = [
@@ -46,6 +49,7 @@ export function ReservationsSection({ showHeading = true } = {}) {
     captureReservationPayment,
     clearFailedReservationPayment,
     createBooking,
+    getAvailableRooms,
     guestProfiles,
     markReservationPrepaid,
     refundReservationPayment,
@@ -54,6 +58,7 @@ export function ReservationsSection({ showHeading = true } = {}) {
     roomViews,
     searchQuery,
     updateReservation,
+    updateReservationDetails,
     updateReservationStatus,
   } = useHotelApp();
   const [statusFilter, setStatusFilter] = useState("all");
@@ -72,8 +77,14 @@ export function ReservationsSection({ showHeading = true } = {}) {
   const [paymentFeedback, setPaymentFeedback] = useState("");
   const [isCardFormOpen, setIsCardFormOpen] = useState(false);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [editRoomId, setEditRoomId] = useState("");
+  const [editCheckIn, setEditCheckIn] = useState("");
+  const [editCheckOut, setEditCheckOut] = useState("");
+  const [editAdults, setEditAdults] = useState(1);
+  const [editFeedback, setEditFeedback] = useState("");
 
-  const bookableRooms = roomViews.filter((room) => room.displayStatus !== "maintenance");
+  const bookableRooms = roomViews;
 
   const filteredReservations = useMemo(
     () =>
@@ -131,6 +142,12 @@ export function ReservationsSection({ showHeading = true } = {}) {
       ),
     );
     setIsCardFormOpen(!selectedReservation.paymentMethod);
+    setEditRoomId(selectedReservation.roomId);
+    setEditCheckIn(selectedReservation.checkIn);
+    setEditCheckOut(selectedReservation.checkOut);
+    setEditAdults(selectedReservation.adults ?? 1);
+    setEditFeedback("");
+    setIsEditingSummary(false);
   }, [selectedReservation]);
 
   function stopClick(event, callback) {
@@ -224,6 +241,49 @@ export function ReservationsSection({ showHeading = true } = {}) {
         "Refund recorded.",
       );
     }
+  }
+
+  function handleEditCheckInChange(value) {
+    setEditCheckIn(value);
+
+    if (editCheckOut <= value) {
+      const nextDate = new Date(`${value}T12:00:00`);
+      nextDate.setDate(nextDate.getDate() + 1);
+      setEditCheckOut(nextDate.toISOString().slice(0, 10));
+    }
+  }
+
+  function getEditableRoomOptions() {
+    const availableRooms = getAvailableRooms(
+      editCheckIn,
+      editCheckOut,
+      editAdults,
+      selectedReservation.id,
+    );
+    const currentRoom = roomViews.find((room) => room.id === selectedReservation.roomId);
+
+    return [currentRoom, ...availableRooms].filter(
+      (room, index, allRooms) =>
+        room && allRooms.findIndex((entry) => entry?.id === room.id) === index,
+    );
+  }
+
+  function saveReservationSummary() {
+    const result = updateReservationDetails(selectedReservation.id, {
+      roomId: editRoomId,
+      checkIn: editCheckIn,
+      checkOut: editCheckOut,
+      adults: Number(editAdults),
+      notes: draftNotes,
+    });
+
+    if (!result.ok) {
+      setEditFeedback(result.error);
+      return;
+    }
+
+    setEditFeedback("Reservation updated.");
+    setIsEditingSummary(false);
   }
 
   const newReservationButton = (
@@ -414,27 +474,103 @@ export function ReservationsSection({ showHeading = true } = {}) {
 
             {activeReservationTab === "summary" && (
               <div className="space-y-5">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <DetailItem label="Guest">{selectedReservation.guestName}</DetailItem>
-                  <DetailItem label="Booking">{selectedReservation.id}</DetailItem>
-                  <DetailItem label="Stay dates">
-                    {formatDateRange(
-                      selectedReservation.checkIn,
-                      selectedReservation.checkOut,
-                    )}
-                  </DetailItem>
-                  <DetailItem label="Room">
-                    {selectedReservation.roomNumber} / {selectedReservation.roomType}
-                  </DetailItem>
-                  <DetailItem label="Adults">{selectedReservation.adults}</DetailItem>
-                  <DetailItem label="Source">{selectedReservation.source}</DetailItem>
-                  <DetailItem label="Total">{formatMoney(selectedReservation.total)}</DetailItem>
-                  <DetailItem label="Balance due">
-                    {formatMoney(selectedReservation.balanceDue)}
-                  </DetailItem>
-                </div>
+                {!isEditingSummary ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <DetailItem label="Guest">{selectedReservation.guestName}</DetailItem>
+                    <DetailItem label="Booking">{selectedReservation.id}</DetailItem>
+                    <DetailItem label="Stay dates">
+                      {formatDateRange(
+                        selectedReservation.checkIn,
+                        selectedReservation.checkOut,
+                      )}
+                    </DetailItem>
+                    <DetailItem label="Nights">
+                      {nightsBetween(selectedReservation.checkIn, selectedReservation.checkOut)}
+                    </DetailItem>
+                    <DetailItem label="Room">
+                      {selectedReservation.roomNumber} / {selectedReservation.roomType}
+                    </DetailItem>
+                    <DetailItem label="Adults">{selectedReservation.adults}</DetailItem>
+                    <DetailItem label="Source">{selectedReservation.source}</DetailItem>
+                    <DetailItem label="Total">{formatMoney(selectedReservation.total)}</DetailItem>
+                    <DetailItem label="Balance due">
+                      {formatMoney(selectedReservation.balanceDue)}
+                    </DetailItem>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-slate-200 p-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label>
+                        <span className="field-label">Check-in</span>
+                        <input
+                          className="input-base"
+                          type="date"
+                          value={editCheckIn}
+                          onChange={(event) => handleEditCheckInChange(event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        <span className="field-label">Check-out</span>
+                        <input
+                          className="input-base"
+                          type="date"
+                          min={editCheckIn}
+                          value={editCheckOut}
+                          onChange={(event) => setEditCheckOut(event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        <span className="field-label">Adults</span>
+                        <input
+                          className="input-base"
+                          type="number"
+                          min="1"
+                          max="6"
+                          value={editAdults}
+                          onChange={(event) => setEditAdults(event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        <span className="field-label">Room</span>
+                        <select
+                          className="input-base"
+                          value={editRoomId}
+                          onChange={(event) => setEditRoomId(event.target.value)}
+                        >
+                          {getEditableRoomOptions().map((room) => (
+                            <option key={room.id} value={room.id}>
+                              Room {room.number} - {room.type}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <button className="btn-primary" type="button" onClick={saveReservationSummary}>
+                        Save changes
+                      </button>
+                      <button
+                        className="btn-secondary"
+                        type="button"
+                        onClick={() => setIsEditingSummary(false)}
+                      >
+                        Cancel edit
+                      </button>
+                      {editFeedback && <p className="text-sm text-slate-500">{editFeedback}</p>}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+                  {!isEditingSummary && (
+                    <button
+                      className="btn-secondary"
+                      type="button"
+                      onClick={() => setIsEditingSummary(true)}
+                    >
+                      Edit reservation
+                    </button>
+                  )}
                   {selectedReservation.status === "confirmed" && (
                     <button
                       className="btn-primary"
@@ -444,6 +580,17 @@ export function ReservationsSection({ showHeading = true } = {}) {
                       }
                     >
                       Check in
+                    </button>
+                  )}
+                  {selectedReservation.status === "confirmed" && (
+                    <button
+                      className="btn-secondary"
+                      type="button"
+                      onClick={() =>
+                        updateReservationStatus(selectedReservation.id, "no-show")
+                      }
+                    >
+                      Mark no-show
                     </button>
                   )}
                   {selectedReservation.status === "checked-in" && (
@@ -457,7 +604,7 @@ export function ReservationsSection({ showHeading = true } = {}) {
                       Check out
                     </button>
                   )}
-                  {!["checked-out", "cancelled"].includes(selectedReservation.status) && (
+                  {!["checked-out", "cancelled", "no-show"].includes(selectedReservation.status) && (
                     <button
                       className="btn-danger"
                       type="button"
@@ -717,6 +864,37 @@ export function ReservationsSection({ showHeading = true } = {}) {
                 </div>
 
                 {paymentFeedback && <p className="text-sm text-slate-500">{paymentFeedback}</p>}
+
+                <div className="rounded-md border border-slate-200 p-4">
+                  <h3 className="text-sm font-semibold text-slate-900">Folio</h3>
+                  <div className="mt-3 divide-y divide-slate-200 text-sm">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-2">
+                      <span className="text-slate-600">
+                        Room {selectedReservation.roomNumber} /{" "}
+                        {nightsBetween(
+                          selectedReservation.checkIn,
+                          selectedReservation.checkOut,
+                        )}{" "}
+                        night(s)
+                      </span>
+                      <span className="font-medium text-slate-900">
+                        {formatMoney(selectedReservation.total)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-2">
+                      <span className="text-slate-600">Recorded payments</span>
+                      <span className="font-medium text-slate-900">
+                        -{formatMoney(selectedReservation.amountPaid)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 pt-2">
+                      <span className="font-medium text-slate-900">Balance due</span>
+                      <span className="font-semibold text-slate-900">
+                        {formatMoney(selectedReservation.balanceDue)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
                 <div>
                   <p className="field-label">Payment history</p>

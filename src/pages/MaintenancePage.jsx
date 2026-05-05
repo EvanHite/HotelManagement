@@ -29,6 +29,7 @@ export function MaintenanceSection({ showHeading = true } = {}) {
     issueType: "Plumbing",
     issue: "",
     priority: "medium",
+    assignedTo: "Theo Grant",
   });
 
   const filteredRequests = useMemo(
@@ -66,6 +67,7 @@ export function MaintenanceSection({ showHeading = true } = {}) {
       issueType: "Plumbing",
       issue: "",
       priority: "medium",
+      assignedTo: "Theo Grant",
     });
   }
 
@@ -76,7 +78,7 @@ export function MaintenanceSection({ showHeading = true } = {}) {
       <FilterTabs options={statusOptions} value={statusFilter} onChange={setStatusFilter} />
 
       <Panel title="Create request">
-        <form className="grid gap-3 md:grid-cols-4" onSubmit={handleCreateRequest}>
+        <form className="grid gap-3 md:grid-cols-5" onSubmit={handleCreateRequest}>
           <label>
             <span className="field-label">Room</span>
             <select
@@ -124,6 +126,16 @@ export function MaintenanceSection({ showHeading = true } = {}) {
             </select>
           </label>
           <label>
+            <span className="field-label">Assignee</span>
+            <input
+              className="input-base"
+              value={newRequest.assignedTo}
+              onChange={(event) =>
+                setNewRequest((current) => ({ ...current, assignedTo: event.target.value }))
+              }
+            />
+          </label>
+          <label>
             <span className="field-label">Issue</span>
             <input
               className="input-base"
@@ -135,7 +147,7 @@ export function MaintenanceSection({ showHeading = true } = {}) {
               }
             />
           </label>
-          <div className="md:col-span-4">
+          <div className="md:col-span-5">
             <button className="btn-primary" type="submit">
               Create request
             </button>
@@ -157,6 +169,7 @@ export function MaintenanceSection({ showHeading = true } = {}) {
               { key: "status", header: "Status", render: (row) => <StatusBadge value={row.status} /> },
             ]}
             rows={filteredRequests}
+            rowClassName={(row) => (row.status === "resolved" ? "opacity-60" : "")}
             onRowClick={(row) => setSelectedRequestId(row.id)}
             emptyTitle="No maintenance issues"
             emptyDescription="No maintenance requests match the current filter."

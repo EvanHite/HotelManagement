@@ -16,7 +16,19 @@ import { formatLongDate, nightsBetween } from "../utils/formatters";
 
 const SESSION_KEY = "hotel-management-session";
 const HOTEL_DATA_KEY = "hotel-management-data";
+const SETTINGS_KEY = "hotel-management-settings";
 const HotelAppContext = createContext(null);
+
+const defaultSettings = {
+  hotelName: "Harbor House Milledgeville",
+  contactEmail: "ops@harborhouse.example",
+  checkInTime: "15:00",
+  checkOutTime: "11:00",
+  quietHours: "22:00",
+  arrivalAlerts: true,
+  inventoryAlerts: true,
+  maintenanceAlerts: true,
+};
 
 function makePaymentHistory(action, amount, staffName = "System") {
   return {
@@ -101,6 +113,39 @@ const defaultHotelData = {
   latestReservationId: null,
 };
 
+function cloneDefaultHotelData() {
+  return JSON.parse(JSON.stringify(defaultHotelData));
+}
+
+function getInitialSettings() {
+  if (typeof window === "undefined") {
+    return defaultSettings;
+  }
+
+  const stored = window.localStorage.getItem(SETTINGS_KEY);
+
+  if (!stored) {
+    return defaultSettings;
+  }
+
+  try {
+    return {
+      ...defaultSettings,
+      ...JSON.parse(stored),
+    };
+  } catch (error) {
+    return defaultSettings;
+  }
+}
+
+function datesOverlap(firstStart, firstEnd, secondStart, secondEnd) {
+  return firstStart < secondEnd && firstEnd > secondStart;
+}
+
+function isValidDateRange(checkIn, checkOut) {
+  return Boolean(checkIn && checkOut && checkOut > checkIn);
+}
+
 function getInitialSession() {
   if (typeof window === "undefined") {
     return null;
@@ -140,7 +185,7 @@ export function HotelAppProvider({ children }) {
   // Session and shared app data.
   const [session, setSession] = useState(getInitialSession);
   const [hotelData, setHotelData] = useState(getInitialHotelData);
-  const [selectedHotelId, setSelectedHotelId] = useState(hotelData.hotels[0]?.id ?? "");
+  const [settings, setSettings] = useState(getInitialSettings);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingData] = useState(false);
   const dataError = "";
@@ -174,11 +219,29 @@ export function HotelAppProvider({ children }) {
     }
   }, [hotelData]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+  }, [settings]);
+
   function updateHotelData(changes) {
     setHotelData((current) => ({
       ...current,
       ...changes,
     }));
+  }
+
+  function updateSettings(changes) {
+    setSettings((current) => ({
+      ...current,
+      ...changes,
+    }));
+  }
+
+  function resetDemoData() {
+    setHotelData(cloneDefaultHotelData());
+    setSettings(defaultSettings);
   }
 
   // Derived data used by multiple pages.
@@ -231,7 +294,6 @@ export function HotelAppProvider({ children }) {
     inventoryAlerts: inventoryAlerts.length,
   };
 
-  const notifications = inventoryAlerts.length + openMaintenance.length;
   const roomTypeOptions = Array.from(new Set(baseRooms.map((room) => room.type)));
   const latestReservation =
     reservations.find((reservation) => reservation.id === latestReservationId) ?? null;
@@ -245,6 +307,60 @@ export function HotelAppProvider({ children }) {
     });
   }
 
+  function isRoomAvailable(roomId, checkIn, checkOut, ignoredReservationId = null) {
+    const room = baseRooms.find((entry) => entry.id === roomId);
+
+    if (!room || !isValidDateRange(checkIn, checkOut)) {
+      return false;
+    }
+
+    const hasOpenMaintenance = maintenanceRequests.some(
+      (request) => request.roomId === roomId && request.status !== "resolved",
+    );
+
+    if (hasOpenMaintenance) {
+      return false;
+    }
+
+    return !reservations.some(
+      (reservation) =>
+        reservation.id !== ignoredReservationId &&
+        reservation.roomId === roomId &&
+        !["cancelled", "checked-out", "no-show"].includes(reservation.status) &&
+        datesOverlap(checkIn, checkOut, reservation.checkIn, reservation.checkOut),
+    );
+  }
+
+  function getAvailableRooms(checkIn, checkOut, adults = 1, ignoredReservationId = null) {
+    return roomViews.filter(
+      (room) =>
+        room.capacity >= Number(adults || 1) &&
+        isRoomAvailable(room.id, checkIn, checkOut, ignoredReservationId),
+    );
+  }
+
+  function getBookingError({ roomId, checkIn, checkOut, adults }, ignoredReservationId = null) {
+    const room = baseRooms.find((entry) => entry.id === roomId);
+
+    if (!isValidDateRange(checkIn, checkOut)) {
+      return "Check-out must be after check-in.";
+    }
+
+    if (!room) {
+      return "Choose a room.";
+    }
+
+    if (Number(adults || 1) > room.capacity) {
+      return `Room ${room.number} fits up to ${room.capacity} guests.`;
+    }
+
+    if (!isRoomAvailable(roomId, checkIn, checkOut, ignoredReservationId)) {
+      return "That room is already booked or unavailable for those dates.";
+    }
+
+    return "";
+  }
+
   function logout() {
     setSession(null);
     setSearchQuery("");
@@ -255,7 +371,7 @@ export function HotelAppProvider({ children }) {
     const guest = guestProfiles.find((profile) => profile.id === guestId);
     const room = baseRooms.find((entry) => entry.id === roomId);
 
-    if (!guest || !room) {
+    if (!guest || !room || getBookingError({ roomId, checkIn, checkOut, adults })) {
       return null;
     }
 
@@ -318,22 +434,25 @@ export function HotelAppProvider({ children }) {
           return entry;
         }
 
+        const hasPaidBalance = entry.amountPaid > 0;
+        const isCancellation = status === "cancelled";
+
         return {
           ...entry,
           status,
           paymentStatus:
-            status === "cancelled" && entry.amountPaid > 0
+            isCancellation && hasPaidBalance
               ? "refunded"
               : entry.paymentStatus,
-          amountPaid: status === "cancelled" && entry.amountPaid > 0 ? 0 : entry.amountPaid,
+          amountPaid: isCancellation && hasPaidBalance ? 0 : entry.amountPaid,
           authorizedAmount:
-            status === "cancelled" ? 0 : entry.authorizedAmount,
+            isCancellation ? 0 : entry.authorizedAmount,
           balanceDue:
-            status === "cancelled" && entry.amountPaid > 0
+            isCancellation
               ? 0
               : entry.balanceDue,
           paymentHistory:
-            status === "cancelled" && entry.amountPaid > 0
+            isCancellation && hasPaidBalance
               ? [
                   ...(entry.paymentHistory ?? []),
                   makePaymentHistory("Refunded on cancellation", entry.amountPaid, session?.name),
@@ -385,6 +504,94 @@ export function HotelAppProvider({ children }) {
               ...changes,
             }
           : entry,
+      ),
+    });
+  }
+
+  function updateReservationDetails(reservationId, changes) {
+    const reservation = reservations.find((entry) => entry.id === reservationId);
+
+    if (!reservation) {
+      return {
+        ok: false,
+        error: "Reservation was not found.",
+      };
+    }
+
+    const nextRoomId = changes.roomId ?? reservation.roomId;
+    const nextCheckIn = changes.checkIn ?? reservation.checkIn;
+    const nextCheckOut = changes.checkOut ?? reservation.checkOut;
+    const nextAdults = Number(changes.adults ?? reservation.adults ?? 1);
+    const error = getBookingError(
+      {
+        roomId: nextRoomId,
+        checkIn: nextCheckIn,
+        checkOut: nextCheckOut,
+        adults: nextAdults,
+      },
+      reservationId,
+    );
+
+    if (error) {
+      return {
+        ok: false,
+        error,
+      };
+    }
+
+    const room = baseRooms.find((entry) => entry.id === nextRoomId);
+    const total = room.rate * nightsBetween(nextCheckIn, nextCheckOut);
+
+    updateReservation(reservationId, {
+      ...changes,
+      roomId: nextRoomId,
+      roomNumber: room.number,
+      roomType: room.type,
+      checkIn: nextCheckIn,
+      checkOut: nextCheckOut,
+      adults: nextAdults,
+      total,
+      balanceDue: calculateBalance(total, reservation.amountPaid),
+    });
+
+    return {
+      ok: true,
+      error: "",
+    };
+  }
+
+  function createGuest(profile) {
+    const cleanName = profile.name?.trim();
+
+    if (!cleanName) {
+      return null;
+    }
+
+    const guest = {
+      id: `guest-${Date.now()}`,
+      name: cleanName,
+      email: profile.email?.trim() || "",
+      phone: profile.phone?.trim() || "",
+      loyaltyTier: profile.loyaltyTier || "Standard",
+      company: profile.company?.trim() || "Personal Travel",
+      notes: profile.notes?.trim() || "",
+    };
+
+    updateHotelData({
+      guestProfiles: [guest, ...guestProfiles],
+    });
+    return guest;
+  }
+
+  function updateGuest(guestId, changes) {
+    updateHotelData({
+      guestProfiles: guestProfiles.map((guest) =>
+        guest.id === guestId
+          ? {
+              ...guest,
+              ...changes,
+            }
+          : guest,
       ),
     });
   }
@@ -544,7 +751,7 @@ export function HotelAppProvider({ children }) {
     });
   }
 
-  function createMaintenanceRequest({ roomId, issueType, issue, priority }) {
+  function createMaintenanceRequest({ roomId, issueType, issue, priority, assignedTo }) {
     const room = baseRooms.find((entry) => entry.id === roomId);
 
     if (!room || !issue.trim()) {
@@ -560,7 +767,7 @@ export function HotelAppProvider({ children }) {
       issue,
       priority,
       status: "open",
-      assignedTo: "Unassigned",
+      assignedTo: assignedTo?.trim() || "Unassigned",
       reportedAt: "Just now",
       submittedDate: businessDate,
     };
@@ -587,6 +794,75 @@ export function HotelAppProvider({ children }) {
     });
   }
 
+  function updateInventoryItem(itemId, changes) {
+    updateHotelData({
+      inventoryItems: inventoryItems.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              ...changes,
+              stock: Number(changes.stock ?? item.stock),
+              reorderLevel: Number(changes.reorderLevel ?? item.reorderLevel),
+            }
+          : item,
+      ),
+    });
+  }
+
+  const notificationItems = [
+    ...(settings.arrivalAlerts
+      ? [
+          ...arrivalsToday.map((reservation) => ({
+            id: `arrival-${reservation.id}`,
+            title: `${reservation.guestName} arrives today`,
+            detail: `Room ${reservation.roomNumber}`,
+            type: "Arrival",
+            path: "/app/front-desk",
+          })),
+          ...departuresToday.map((reservation) => ({
+            id: `departure-${reservation.id}`,
+            title: `${reservation.guestName} departs today`,
+            detail: `Room ${reservation.roomNumber}`,
+            type: "Departure",
+            path: "/app/front-desk",
+          })),
+        ]
+      : []),
+    ...(settings.maintenanceAlerts
+      ? openMaintenance.map((request) => ({
+          id: `maintenance-${request.id}`,
+          title: `Maintenance in Room ${request.roomNumber}`,
+          detail: request.issue,
+          type: request.priority,
+          path: "/operations",
+        }))
+      : []),
+    ...(settings.inventoryAlerts
+      ? inventoryAlerts.map((item) => ({
+          id: `inventory-${item.id}`,
+          title: `${item.name} is low`,
+          detail: `${item.stock} ${item.unit} on hand`,
+          type: "Low",
+          path: "/operations",
+        }))
+      : []),
+    ...reservations
+      .filter(
+        (reservation) =>
+          ["pending", "failed"].includes(reservation.paymentStatus) &&
+          reservation.balanceDue > 0 &&
+          !["cancelled", "no-show", "checked-out"].includes(reservation.status),
+      )
+      .map((reservation) => ({
+        id: `payment-${reservation.id}`,
+        title: `${reservation.guestName} needs payment review`,
+        detail: `Reservation ${reservation.id}`,
+        type: reservation.paymentStatus,
+        path: "/app/front-desk",
+      })),
+  ];
+  const notifications = notificationItems.length;
+
   function getReservationById(reservationId) {
     return reservations.find((reservation) => reservation.id === reservationId) ?? null;
   }
@@ -610,17 +886,22 @@ export function HotelAppProvider({ children }) {
     maintenanceRequests,
     metrics,
     notifications,
+    notificationItems,
     reservations,
     roleLabels,
     roomTypeOptions,
     roomViews,
     searchQuery,
-    selectedHotelId,
+    settings,
     session,
     dataError,
     setLatestReservationId: (id) => updateHotelData({ latestReservationId: id }),
     setSearchQuery,
-    setSelectedHotelId,
+    createGuest,
+    getAvailableRooms,
+    getBookingError,
+    isRoomAvailable,
+    resetDemoData,
     addReservationCard,
     authorizeReservationPayment,
     captureReservationPayment,
@@ -632,8 +913,12 @@ export function HotelAppProvider({ children }) {
     refundReservationPayment,
     updateHousekeepingTask,
     updateMaintenanceRequest,
+    updateGuest,
+    updateInventoryItem,
     updateReservation,
+    updateReservationDetails,
     updateReservationStatus,
+    updateSettings,
     restockInventoryItem,
   };
 
