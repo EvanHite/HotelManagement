@@ -226,6 +226,32 @@ export function HotelAppProvider({ children }) {
     );
   }
 
+  function createHousekeepingTask({ roomId, taskType, urgency, assignedTo, dueBy, suppliesNeeded }) {
+    const room = baseRooms.find((entry) => entry.id === roomId);
+
+    if (!room) {
+      return null;
+    }
+
+    const task = {
+      id: `hk-${Date.now()}`,
+      roomId,
+      roomNumber: room.number,
+      taskType,
+      urgency,
+      status: "queued",
+      assignedTo,
+      dueBy,
+      readiness: "Blocked",
+      suppliesNeeded: suppliesNeeded ? suppliesNeeded.split(",").map((item) => item.trim()).filter(Boolean) : [],
+
+    };
+
+    setHousekeepingTasks((current) => [task, ...current]);
+
+    return task;
+  }
+
   function createMaintenanceRequest({ roomId, issueType, issue, priority}) {
     const room = baseRooms.find((entry) => entry.id === roomId);
 
