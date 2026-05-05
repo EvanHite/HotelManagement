@@ -47,10 +47,17 @@ export function MyStaysPage() {
                     <button
                       className="btn-secondary h-8 px-2 text-xs"
                       type="button"
-                      onClick={() => updateReservationStatus(row.id, "cancelled")}
-                      >
-                        Cancel
-                      </button>
+                      onClick={() => {
+                        const shouldCancel = window.confirm(
+                          "Are you sure you want to cancel this reservation?",
+                        );
+                        if (shouldCancel) {
+                          updateReservationStatus(row.id, "cancelled");
+                        }
+                      }}
+                    >
+                      Cancel
+                    </button>
                   ) : (
                     "-"
                   ),
