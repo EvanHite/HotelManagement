@@ -7,7 +7,7 @@ import { useHotelApp } from "../context/HotelAppContext";
 import { formatDateRange, formatMoney } from "../utils/formatters";
 
 export function MyStaysPage() {
-  const { currentGuest, guestReservations } = useHotelApp();
+  const { currentGuest, guestReservations, updateReservationStatus } = useHotelApp();
   const activeStays = guestReservations.filter((reservation) =>
     ["confirmed", "checked-in"].includes(reservation.status),
   );
@@ -39,6 +39,22 @@ export function MyStaysPage() {
               },
               { key: "status", header: "Status", render: (row) => <StatusBadge value={row.status} /> },
               { key: "total", header: "Total", render: (row) => formatMoney(row.total) },
+              {
+                key: "actions",
+                header: "Actions",
+                render: (row) =>
+                  row.status === "confirmed" ? (
+                    <button
+                      className="btn-secondary h-8 px-2 text-xs"
+                      type="button"
+                      onClick={() => updateReservationStatus(row.id, "cancelled")}
+                      >
+                        Cancel
+                      </button>
+                  ) : (
+                    "-"
+                  ),
+              },
             ]}
             rows={guestReservations}
             emptyTitle="No reservations"
