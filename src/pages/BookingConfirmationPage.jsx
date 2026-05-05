@@ -44,6 +44,18 @@ export function BookingConfirmationPage() {
               <p className="text-xs font-medium text-slate-500">Total</p>
               <p className="mt-1 text-sm text-slate-700">{formatMoney(latestReservation.total)}</p>
             </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500">Payment</p>
+              <div className="mt-1">
+                <StatusBadge value={latestReservation.paymentStatus} />
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500">Guests</p>
+              <p className="mt-1 text-sm text-slate-700">
+                {latestReservation.adults} adult{latestReservation.adults === 1 ? "" : "s"}
+              </p>
+            </div>
           </div>
         </Panel>
 
@@ -53,12 +65,20 @@ export function BookingConfirmationPage() {
             <p>Use the Check-In page when your arrival date begins.</p>
             <p>Property staff can also see this reservation in Reservations.</p>
 
-            <Link
-              to="/app/my-stays"
-              className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-            >
-              View my stays
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/app/my-stays"
+                className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+              >
+                View my stays
+              </Link>
+              <Link
+                to="/app/book"
+                className="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Book another stay
+              </Link>
+            </div>
           </div>
         </Panel>
       </div>
